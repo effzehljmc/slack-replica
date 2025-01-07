@@ -1,7 +1,6 @@
 "use client";
 
 import { LoginForm } from "./LoginForm";
-import { SocialAuthButtons } from "./social-auth-buttons";
 import { useState } from "react";
 import type { AuthVariant } from "../types";
 
@@ -9,38 +8,25 @@ export function AuthScreen() {
     const [variant, setVariant] = useState<AuthVariant>("LOGIN");
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#4A2B5C]">
-            <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-xl">
-                <div className="text-center">
-                    <h2 className="text-2xl font-semibold text-gray-900">
-                        Login to continue
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-blue-100 to-white bg-pattern">
+            <div className="w-full max-w-md p-10 space-y-8 bg-white/80 backdrop-blur-sm text-gray-900 rounded-3xl shadow-2xl border border-white/20">
+                <div className="text-center space-y-2">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">
+                        {variant === "LOGIN" ? "Welcome back" : "Create account"}
                     </h2>
-                    <p className="mt-2 text-gray-600 text-sm">
-                        Use your email or another service to continue
+                    <p className="mt-2 text-base text-gray-600 font-serif">
+                        {variant === "LOGIN" ? "Sign in to your account" : "Start your journey with us"}
                     </p>
                 </div>
 
                 <LoginForm variant={variant} />
 
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-200" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="bg-white px-2 text-gray-500">
-                            Or continue with
-                        </span>
-                    </div>
-                </div>
-
-                <SocialAuthButtons />
-
-                <div className="text-center text-sm">
+                <div className="text-center">
                     <button 
                         onClick={() => setVariant(variant === "LOGIN" ? "REGISTER" : "LOGIN")}
-                        className="text-gray-600 hover:text-gray-900"
+                        className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 text-base font-sans"
                     >
-                        Don't have an account?
+                        {variant === "LOGIN" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
                     </button>
                 </div>
             </div>
