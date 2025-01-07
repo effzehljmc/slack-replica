@@ -40,11 +40,96 @@ A modern real-time chat application built with Next.js 14, featuring a sleek UI 
 
 ### Prerequisites
 
-- Node.js 18+ 
-- npm or yarn
 - Git
+- One of the following setups:
+  
+  **Option 1: Local Development**
+  - Node.js 18+ 
+  - npm or yarn
+
+  **Option 2: Docker Development**
+  - Docker Desktop ([Install Guide](#docker-installation))
+  - Docker Compose (included in Docker Desktop)
+
+### Docker Installation
+
+#### macOS
+1. Download [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop)
+2. Double-click the downloaded `.dmg` file
+3. Drag Docker to Applications
+4. Open Docker from Applications
+5. Follow the installation wizard
+
+#### Windows
+1. Enable WSL 2 (Windows Subsystem for Linux):
+   ```powershell
+   wsl --install
+   ```
+2. Download [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop)
+3. Run the installer
+4. Follow the installation wizard
+5. Restart your computer
+
+#### Linux (Ubuntu)
+```bash
+# Update package index
+sudo apt-get update
+
+# Install prerequisites
+sudo apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+# Add Docker's official GPG key
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+# Set up stable repository
+echo \
+  "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install Docker Engine and Docker Compose
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Add your user to the docker group
+sudo usermod -aG docker $USER
+
+# Apply changes (you'll need to log out and back in)
+newgrp docker
+```
+
+### Verify Installation
+After installation, verify Docker is working:
+```bash
+docker --version
+docker compose version
+```
+
+### Environment Setup
+
+1. Get your Convex URL:
+   - Go to [Convex Dashboard](https://dashboard.convex.dev)
+   - Create a new project or select an existing one
+   - Click on "Settings" in the left sidebar
+   - Copy the "Deployment URL" under "General"
+
+2. Create your environment file:
+   ```bash
+   # Copy the example environment file
+   cp .env.example .env
+   ```
+
+3. Edit the `.env` file:
+   - Replace `your_convex_deployment_url` with your actual Convex URL
+   - Example: `NEXT_PUBLIC_CONVEX_URL=https://cheerful-panda-123.convex.cloud`
 
 ### Installation
+
+#### Option 1: Local Development
 
 1. Clone the repository:
 ```bash
@@ -72,7 +157,25 @@ npm run dev
 yarn dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
+#### Option 2: Docker Development
+
+1. Clone the repository:
+```bash
+git clone https://github.com/effzehljmc/slack-replica.git
+cd slack-replica
+```
+
+2. Create a `.env` file with your environment variables:
+```env
+NEXT_PUBLIC_CONVEX_URL=your_convex_url
+```
+
+3. Build and run with Docker Compose:
+```bash
+docker-compose up --build
+```
+
+The application will be available at [http://localhost:3000](http://localhost:3000).
 
 ## Project Structure
 
@@ -98,12 +201,24 @@ slack-replica/
 
 ## Deployment
 
-The application can be deployed on Vercel:
+### Option 1: Vercel Deployment
 
 1. Push your code to GitHub
 2. Connect your repository to Vercel
 3. Configure environment variables in Vercel dashboard
 4. Deploy!
+
+### Option 2: Docker Deployment
+
+1. Build the Docker image:
+```bash
+docker-compose build
+```
+
+2. Run in production:
+```bash
+docker-compose up -d
+```
 
 ## Contributing
 
