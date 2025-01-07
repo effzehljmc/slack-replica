@@ -4,7 +4,8 @@
     "module": "esnext",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/convex/*": ["./convex/*"]
     },
     "jsx": "preserve",
     "moduleResolution": "node",

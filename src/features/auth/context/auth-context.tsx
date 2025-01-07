@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useCallback, useState } from 'react';
 import type { User, AuthState } from '../types';
+import { useMutation, useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface AuthContextType extends AuthState {
   signIn: (email: string, password: string) => Promise<void>;
@@ -18,23 +20,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
+  const signInAction = useAction(api.auth.signIn);
+  const signUpAction = useAction(api.auth.signUp);
+
   const signIn = useCallback(async (email: string, password: string) => {
     try {
-      // TODO: Implement actual sign in
-      console.log('Sign in:', { email, password });
+      const user = await signInAction({ email, password });
+      setUser(user);
+      setIsAuthenticated(true);
+      setToken(`email:${email}`);
     } catch (error) {
       throw error;
     }
-  }, []);
+  }, [signInAction]);
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     try {
-      // TODO: Implement actual sign up
-      console.log('Sign up:', { email, password, name });
+      const user = await signUpAction({ email, password, name });
+      setUser(user);
+      setIsAuthenticated(true);
+      setToken(`email:${email}`);
     } catch (error) {
       throw error;
     }
-  }, []);
+  }, [signUpAction]);
 
   const signOut = useCallback(async () => {
     try {

@@ -9,44 +9,40 @@ export function AuthScreen() {
     const [variant, setVariant] = useState<AuthVariant>("LOGIN");
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-            <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+        <div className="min-h-screen flex items-center justify-center bg-[#4A2B5C]">
+            <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-xl">
                 <div className="text-center">
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {variant === "LOGIN" ? "Welcome back" : "Create an account"}
+                    <h2 className="text-2xl font-semibold text-gray-900">
+                        Login to continue
                     </h2>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                        {variant === "LOGIN" ? "Sign in to your account" : "Sign up for a new account"}
+                    <p className="mt-2 text-gray-600 text-sm">
+                        Use your email or another service to continue
                     </p>
                 </div>
-                <SocialAuthButtons />
+
+                <LoginForm variant={variant} />
+
                 <div className="relative">
                     <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+                        <div className="w-full border-t border-gray-200" />
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
+                        <span className="bg-white px-2 text-gray-500">
                             Or continue with
                         </span>
                     </div>
                 </div>
-                <LoginForm variant={variant} />
+
+                <SocialAuthButtons />
+
                 <div className="text-center text-sm">
                     <button 
                         onClick={() => setVariant(variant === "LOGIN" ? "REGISTER" : "LOGIN")}
-                        className="text-blue-500 hover:underline"
+                        className="text-gray-600 hover:text-gray-900"
                     >
-                        {variant === "LOGIN" 
-                            ? "New user? Create an account" 
-                            : "Already have an account? Sign in"}
+                        Don't have an account?
                     </button>
                 </div>
-                <p className="text-center text-sm text-gray-500">
-                    By continuing, you agree to our{' '}
-                    <a href="#" className="underline">Terms of Service</a>{' '}
-                    and{' '}
-                    <a href="#" className="underline">Privacy Policy</a>
-                </p>
             </div>
         </div>
     );
