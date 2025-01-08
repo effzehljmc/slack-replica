@@ -10,7 +10,7 @@ import { useCurrentUser } from '@/features/auth/hooks/use-current-user';
 import { Id } from '@/convex/_generated/dataModel';
 import { ChatLayout } from '@/features/chat/components/ChatLayout';
 import { MessageItem } from '@/features/chat/components/MessageItem';
-import { Message } from '@/features/chat/types';
+import { Message, ChannelMessage, DirectMessage } from '@/features/chat/types';
 import { ThreadPanel } from '@/features/chat/components/ThreadPanel';
 
 interface Channel {
@@ -167,7 +167,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <ChatLayout>
-      <div className="h-screen flex">
+      <div className="flex h-full">
         {/* Sidebar */}
         <div className="w-64 bg-gray-800 text-white flex flex-col">
           {/* Workspace Header */}
@@ -266,28 +266,54 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message: any) => (
-              <MessageItem
-                key={message._id}
-                message={{
-                  _id: message._id,
-                  content: message.content,
-                  authorId: message.authorId,
+            {messages.map((msg: any) => {
+              // For direct messages
+              if (chatMode === 'direct') {
+                const message: DirectMessage = {
+                  _id: msg._id,
+                  content: msg.content,
+                  authorId: msg.senderId,
                   author: {
-                    name: message.author?.name || '',
-                    email: message.author?.email || '',
+                    name: msg.author?.name || '',
+                    email: msg.author?.email || '',
                   },
-                  timestamp: message.timestamp,
-                  createdAt: message.createdAt,
-                  channelId: message.channelId,
-                  threadId: message.threadId,
-                  hasThreadReplies: message.hasThreadReplies,
-                  replyCount: message.replyCount,
-                }}
-                onThreadClick={handleThreadOpen}
-                isDirectMessage={chatMode === 'direct'}
-              />
-            ))}
+                  timestamp: undefined,
+                  createdAt: msg.createdAt,
+                  senderId: msg.senderId,
+                  receiverId: msg.receiverId,
+                };
+                return (
+                  <MessageItem
+                    key={msg._id}
+                    message={message}
+                  />
+                );
+              }
+              
+              // For channel messages
+              const message: ChannelMessage = {
+                _id: msg._id,
+                content: msg.content,
+                authorId: msg.authorId,
+                author: {
+                  name: msg.author?.name || '',
+                  email: msg.author?.email || '',
+                },
+                channelId: msg.channelId,
+                timestamp: msg.timestamp,
+                createdAt: msg.createdAt,
+                threadId: msg.threadId,
+                hasThreadReplies: msg.hasThreadReplies,
+                replyCount: msg.replyCount,
+              };
+              return (
+                <MessageItem
+                  key={msg._id}
+                  message={message}
+                  onThreadClick={handleThreadOpen}
+                />
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
 

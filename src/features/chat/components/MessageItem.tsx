@@ -1,27 +1,28 @@
 'use client';
 
-import { Message } from "../types";
+import { Message, isDirectMessage, isChannelMessage } from "../types";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MessageReactions } from "./MessageReactions";
 
 interface MessageItemProps {
   message: Message;
   isThreadReply?: boolean;
   onThreadClick?: (message: Message) => void;
-  isDirectMessage?: boolean;
 }
 
-export function MessageItem({ message, isThreadReply, onThreadClick, isDirectMessage }: MessageItemProps) {
+export function MessageItem({ message, isThreadReply, onThreadClick }: MessageItemProps) {
   const handleThreadClick = () => {
-    if (!isThreadReply && !isDirectMessage && onThreadClick) {
+    if (!isThreadReply && isChannelMessage(message) && onThreadClick) {
       onThreadClick(message);
     }
   };
 
   const authorName = message.author?.name || message.author?.email || 'Unknown';
-
   const timestamp = message.timestamp || message.createdAt || Date.now();
+  const messageType = isDirectMessage(message) ? "direct_message" : "message";
+  const canShowThreadButton = !isThreadReply && isChannelMessage(message);
 
   return (
     <div className={cn(
@@ -36,9 +37,13 @@ export function MessageItem({ message, isThreadReply, onThreadClick, isDirectMes
           </span>
         </div>
         <p className="mt-1">{message.content}</p>
+        <MessageReactions 
+          targetId={message._id} 
+          targetType={messageType}
+        />
       </div>
       
-      {!isThreadReply && !isDirectMessage && (
+      {canShowThreadButton && (
         <Button
           variant="ghost"
           size="sm"

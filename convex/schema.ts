@@ -13,6 +13,15 @@ export default defineSchema({
     replyCount: v.optional(v.number()),
   }).index("by_thread", ["threadId"]),
 
+  reactions: defineTable({
+    messageId: v.optional(v.id("messages")),
+    targetId: v.optional(v.union(v.id("messages"), v.id("direct_messages"))),
+    targetType: v.optional(v.union(v.literal("message"), v.literal("direct_message"))),
+    userId: v.id("users"),
+    emoji: v.string(),
+    createdAt: v.number(),
+  }).index("by_target", ["targetId", "targetType"]),
+
   channels: defineTable({
     name: v.string(),
     description: v.optional(v.string()),

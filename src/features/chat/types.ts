@@ -1,33 +1,45 @@
 import { Id } from "../../../convex/_generated/dataModel";
 
-// The raw message type from Convex
-export interface ConvexMessage {
-  _id: Id<"messages">;
-  content: string;
-  authorId: Id<"users">;
-  channelId: Id<"channels">;
-  timestamp?: number;
-  createdAt?: number;
-  threadId?: Id<"messages">;
-  hasThreadReplies?: boolean;
-  replyCount?: number;
-}
-
-// The message type with resolved author information
-export interface Message {
-  _id: Id<"messages">;
+// Base message interface with common properties
+interface BaseMessage {
+  _id: Id<"messages"> | Id<"direct_messages">;
   content: string;
   authorId: Id<"users">;
   author?: {
     name: string;
     email: string;
   };
-  channelId: Id<"channels">;
   timestamp?: number;
   createdAt?: number;
+}
+
+// Regular channel message
+export interface ChannelMessage extends BaseMessage {
+  _id: Id<"messages">;
+  channelId: Id<"channels">;
   threadId?: Id<"messages">;
   hasThreadReplies?: boolean;
   replyCount?: number;
+}
+
+// Direct message
+export interface DirectMessage extends BaseMessage {
+  _id: Id<"direct_messages">;
+  senderId: Id<"users">;
+  receiverId: Id<"users">;
+}
+
+// Union type for all message types
+export type Message = ChannelMessage | DirectMessage;
+
+// Helper type guard to check if a message is a direct message
+export function isDirectMessage(message: Message): message is DirectMessage {
+  return '_id' in message && 'senderId' in message && 'receiverId' in message;
+}
+
+// Helper type guard to check if a message is a channel message
+export function isChannelMessage(message: Message): message is ChannelMessage {
+  return '_id' in message && 'channelId' in message;
 }
 
 export interface Thread {

@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { Message } from "../types";
+import { ChannelMessage } from "../types";
 import { MessageItem } from "./MessageItem";
 import { Id } from "../../../../convex/_generated/dataModel";
 
@@ -28,7 +28,7 @@ export function ThreadMessageList({ threadId }: ThreadMessageListProps) {
   return (
     <div className="flex-1 p-4 space-y-4">
       {messages.map((msg) => {
-        const message: Message = {
+        const message: ChannelMessage = {
           _id: msg._id,
           content: msg.content,
           authorId: msg.authorId,
