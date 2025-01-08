@@ -4,22 +4,13 @@ import { ConvexError } from "convex/values";
 import * as bcrypt from "bcryptjs";
 import { api } from "./_generated/api";
 
-// Define the User type
-interface User {
-  _id: string;
-  email: string;
-  name?: string;
-  hashedPassword: string;
-  tokenIdentifier: string;
-}
-
 export const signUp = action({
   args: {
     email: v.string(),
     password: v.string(),
-    name: v.optional(v.string()),
+    name: v.string(),
   },
-  async handler(ctx, args): Promise<User> {
+  async handler(ctx, args): Promise<any> {
     // Check if email already exists
     const existingUser = await ctx.runQuery(api.auth.getUser, { email: args.email });
 
@@ -50,11 +41,16 @@ export const createUser = mutation({
   args: {
     email: v.string(),
     hashedPassword: v.string(),
-    name: v.optional(v.string()),
+    name: v.string(),
     tokenIdentifier: v.string(),
   },
-  async handler(ctx, args): Promise<string> {
-    return await ctx.db.insert("users", args);
+  async handler(ctx, args) {
+    return await ctx.db.insert("users", {
+      email: args.email,
+      hashedPassword: args.hashedPassword,
+      name: args.name,
+      tokenIdentifier: args.tokenIdentifier,
+    });
   },
 });
 
@@ -63,7 +59,14 @@ export const signIn = action({
     email: v.string(),
     password: v.string(),
   },
-  async handler(ctx, args): Promise<User> {
+  async handler(ctx, args): Promise<{
+    _id: any;
+    email: string;
+    hashedPassword: string;
+    name: string;
+    tokenIdentifier: string;
+    status?: string;
+  }> {
     // Find user by email
     const user = await ctx.runQuery(api.auth.getUser, { email: args.email });
 
@@ -83,10 +86,17 @@ export const signIn = action({
 
 export const getUser = query({
   args: { email: v.string() },
-  async handler(ctx, args): Promise<User | null> {
-    return await ctx.db
+  async handler(ctx, args) {
+    const user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
+
+    if (!user) return null;
+
+    return {
+      ...user,
+      tokenIdentifier: `email:${user.email}`,
+    };
   },
 }); 

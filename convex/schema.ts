@@ -2,31 +2,34 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  users: defineTable({
-    email: v.string(),
-    hashedPassword: v.string(),
-    name: v.optional(v.string()),
-    image: v.optional(v.string()),
-    tokenIdentifier: v.string(),
-    status: v.optional(v.string()), // online/offline status
-  })
-    .index("by_token", ["tokenIdentifier"])
-    .index("by_email", ["email"]),
-    
-  channels: defineTable({
-    name: v.string(),
-    createdBy: v.id("users"), // user ID who created the channel
-    createdAt: v.number(), // timestamp
-  }).index("by_name", ["name"]),
-
   messages: defineTable({
     content: v.string(),
-    channelId: v.id("channels"),
     authorId: v.id("users"),
+    channelId: v.id("channels"),
+    timestamp: v.optional(v.number()),
+    createdAt: v.optional(v.number()),
+    threadId: v.optional(v.id("messages")),
+    hasThreadReplies: v.optional(v.boolean()),
+    replyCount: v.optional(v.number()),
+  }).index("by_thread", ["threadId"]),
+
+  channels: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    createdBy: v.id("users"),
+    isPrivate: v.optional(v.boolean()),
+    members: v.optional(v.array(v.id("users"))),
     createdAt: v.number(),
+  }),
+
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+    hashedPassword: v.string(),
+    tokenIdentifier: v.string(),
+    status: v.optional(v.string()),
   })
-    .index("by_channel", ["channelId", "createdAt"])
-    .index("by_author", ["authorId"]),
+    .index("by_email", ["email"]),
 
   direct_messages: defineTable({
     content: v.string(),
@@ -34,6 +37,6 @@ export default defineSchema({
     receiverId: v.id("users"),
     createdAt: v.number(),
   })
-    .index("by_participants", ["senderId", "receiverId", "createdAt"])
-    .index("by_participants_reverse", ["receiverId", "senderId", "createdAt"]),
+    .index("by_participants", ["senderId", "receiverId"])
+    .index("by_participants_reverse", ["receiverId", "senderId"]),
 });

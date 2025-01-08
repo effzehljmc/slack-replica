@@ -11,7 +11,10 @@ export const createChannel = mutation({
     const channelId = await ctx.db.insert("channels", {
       name,
       createdBy,
+      isPrivate: false,
+      members: [createdBy],
       createdAt: Date.now(),
+      description: `Welcome to #${name}!`,
     });
     return channelId;
   }

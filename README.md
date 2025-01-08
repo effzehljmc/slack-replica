@@ -11,10 +11,23 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
 - 💬 **Real-time Messaging**
   - Instant message delivery
   - Message history persistence
+  - Thread support with dedicated panel
+  - Seamless conversation threading
+
+- 🧵 **Thread Features**
+  - Click messages to open threads
+  - Dedicated right-side panel for thread discussions
+  - Easy thread navigation with close button
+  - Original message context preserved
+  - Smart panel management (auto-closes when switching channels)
+  - Smooth transitions and animations
 
 - 📱 **Modern UI**
   - Clean, responsive design
   - Built with Tailwind CSS
+  - Adaptive layout for thread views
+  - Intuitive visual hierarchy
+  - Smooth transitions and animations
 
 ## Quick Start
 
@@ -77,9 +90,32 @@ slack-replica/
 │   ├── app/             # Next.js pages
 │   ├── components/      # UI components
 │   └── features/        # Feature modules
+│       ├── auth/        # Authentication
+│       ├── chat/        # Messaging & threads
+│       └── ui/          # Shared UI components
 ├── convex/              # Backend functions
 └── public/             # Static assets
 ```
+
+## Key Features
+
+### Thread Support
+- **Thread Panel**: Dedicated right-side panel for focused discussions
+- **Context Preservation**: Original message always visible in thread view
+- **Smart Navigation**: 
+  - Auto-closes when switching channels
+  - Auto-closes when switching to private messages
+  - Only one thread active at a time
+- **Visual Feedback**:
+  - Messages show thread indicators
+  - Smooth transitions when opening/closing threads
+  - Adaptive layout adjustments
+
+### UI/UX Improvements
+- **Space Management**: Optimized layout for thread panel integration
+- **Visual Hierarchy**: Clear distinction between main chat and threads
+- **Transitions**: Smooth animations for panel operations
+- **Responsive Design**: Adapts to different screen sizes
 
 ## Contributing
 

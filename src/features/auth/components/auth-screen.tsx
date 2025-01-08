@@ -3,33 +3,34 @@
 import { LoginForm } from "./LoginForm";
 import { useState } from "react";
 import type { AuthVariant } from "../types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function AuthScreen() {
     const [variant, setVariant] = useState<AuthVariant>("LOGIN");
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-blue-100 to-white bg-pattern">
-            <div className="w-full max-w-md p-10 space-y-8 bg-white/80 backdrop-blur-sm text-gray-900 rounded-3xl shadow-2xl border border-white/20">
-                <div className="text-center space-y-2">
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">
+        <div className="flex min-h-screen items-center justify-center bg-gray-50/50 p-4">
+            <Card className="w-full max-w-sm">
+                <CardHeader className="space-y-1">
+                    <CardTitle className="text-2xl">
                         {variant === "LOGIN" ? "Welcome back" : "Create account"}
-                    </h2>
-                    <p className="mt-2 text-base text-gray-600 font-serif">
-                        {variant === "LOGIN" ? "Sign in to your account" : "Start your journey with us"}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                        {variant === "LOGIN" ? "Sign in to your account" : "Enter your details to get started"}
                     </p>
-                </div>
-
-                <LoginForm variant={variant} />
-
-                <div className="text-center">
-                    <button 
-                        onClick={() => setVariant(variant === "LOGIN" ? "REGISTER" : "LOGIN")}
-                        className="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200 text-base font-sans"
-                    >
-                        {variant === "LOGIN" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-                    </button>
-                </div>
-            </div>
+                </CardHeader>
+                <CardContent>
+                    <LoginForm variant={variant} />
+                    <div className="text-sm text-center mt-4">
+                        <button 
+                            onClick={() => setVariant(variant === "LOGIN" ? "REGISTER" : "LOGIN")}
+                            className="text-primary underline-offset-4 hover:underline"
+                        >
+                            {variant === "LOGIN" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                        </button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

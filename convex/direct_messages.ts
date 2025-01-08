@@ -41,7 +41,7 @@ export const getDirectMessages = query({
       )
       .collect();
 
-    // Combine and sort messages
+    // Combine and sort messages chronologically (oldest first)
     const allMessages = [...sentMessages, ...receivedMessages]
       .sort((a, b) => a.createdAt - b.createdAt);
 
@@ -53,14 +53,14 @@ export const getDirectMessages = query({
 
     // Create a map of user IDs to user data
     const userMap = new Map([
-      [userId1.toString(), user1],
-      [userId2.toString(), user2],
+      [userId1, user1],
+      [userId2, user2],
     ]);
 
     // Add user data to messages
     return allMessages.map(message => ({
       ...message,
-      sender: userMap.get(message.senderId.toString()),
+      author: userMap.get(message.senderId) || { name: 'Deleted User', email: '' },
     }));
   },
 }); 

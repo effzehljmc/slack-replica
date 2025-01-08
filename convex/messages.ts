@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 // Send a new message
 export const sendMessage = mutation({
@@ -8,47 +9,108 @@ export const sendMessage = mutation({
     channelId: v.id("channels"),
     authorId: v.id("users"),
   },
-  handler: async (ctx, { content, channelId, authorId }) => {
+  handler: async (ctx, {content, channelId, authorId }) => {
     const messageId = await ctx.db.insert("messages", {
       content,
       channelId,
       authorId,
-      createdAt: Date.now(),
+      timestamp: Date.now(),
     });
+    return messageId;
+  },
+});
+
+export const sendThreadMessage = mutation({
+  args: {
+    content: v.string(),
+    threadId: v.id("messages"),
+    authorId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get the original message to get the channel ID
+    const originalMessage = await ctx.db.get(args.threadId);
+    if (!originalMessage) throw new Error("Original message not found");
+
+    // Insert the thread reply
+    const messageId = await ctx.db.insert("messages", {
+      content: args.content,
+      channelId: originalMessage.channelId,
+      authorId: args.authorId,
+      timestamp: Date.now(),
+      threadId: args.threadId,
+    });
+
+    // Update original message
+    await ctx.db.patch(args.threadId, {
+      hasThreadReplies: true,
+      replyCount: (originalMessage.replyCount || 0) + 1,
+    });
+
     return messageId;
   },
 });
 
 // Get messages for a channel
 export const getMessages = query({
-  args: { channelId: v.id("channels") },
-  handler: async (ctx, { channelId }) => {
+  args: {
+    channelId: v.id("channels"),
+  },
+  handler: async (ctx, args) => {
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_channel", (q) => q.eq("channelId", channelId))
-      .collect();
+      .filter((q) => q.eq(q.field("channelId"), args.channelId))
+      .filter((q) => q.eq(q.field("threadId"), undefined))
+      .order("asc")
+      .take(50);
 
-    // Get all unique author IDs from the messages
-    const authorIds = new Set(messages.map((msg) => msg.authorId));
-    
+    // Get all unique author IDs
+    const authorIds = new Set(messages.map(msg => msg.authorId));
+
     // Fetch all authors in one query
-    const authors = await ctx.db
-      .query("users")
-      .collect();
-    
-    // Create a map of author IDs to author data
-    const authorMap = new Map(
-      authors
-        .filter(author => authorIds.has(author._id))
-        .map(author => [author._id.toString(), author])
+    const authors = await Promise.all(
+      Array.from(authorIds).map(id => ctx.db.get(id))
     );
 
-    // Sort messages by createdAt and combine with author data
-    return messages
-      .sort((a, b) => a.createdAt - b.createdAt)
-      .map(message => ({
-        ...message,
-        author: authorMap.get(message.authorId.toString()),
-      }));
+    // Create a map of author IDs to author data, filtering out null values
+    const authorMap = new Map(
+      authors
+        .filter((author): author is NonNullable<typeof author> => author !== null)
+        .map(author => [author._id, author])
+    );
+
+    // Combine messages with author data
+    return messages.map(message => ({
+      ...message,
+      author: authorMap.get(message.authorId) || { name: 'Deleted User', email: '' },
+    }));
+  },
+});
+
+export const listThreadMessages = query({
+  args: {
+    threadId: v.id("messages"),
+  },
+  handler: async (ctx, { threadId }) => {
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
+      .order("asc")
+      .collect();
+
+    const authorIds = new Set(messages.map(msg => msg.authorId));
+    const authors = await Promise.all(
+      Array.from(authorIds).map(id => ctx.db.get(id))
+    );
+
+    const authorMap = new Map(
+      authors
+        .filter((author): author is NonNullable<typeof author> => author !== null)
+        .map(author => [author._id, author])
+    );
+
+    return messages.map(message => ({
+      ...message,
+      author: authorMap.get(message.authorId) || { name: 'Deleted User', email: '' },
+    }));
   },
 }); 
