@@ -5,6 +5,7 @@ import { api } from "../../../../convex/_generated/api";
 import { ChannelMessage } from "../types";
 import { MessageItem } from "./MessageItem";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
 
 interface ThreadMessageListProps {
   threadId: Id<"messages">;
@@ -12,22 +13,13 @@ interface ThreadMessageListProps {
 
 export function ThreadMessageList({ threadId }: ThreadMessageListProps) {
   const messages = useQuery(api.messages.listThreadMessages, { threadId });
+  const { data: user } = useCurrentUser();
 
-  if (!messages) {
-    return (
-      <div className="flex-1 p-4">
-        <div className="animate-pulse space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-14 bg-gray-100 rounded-md" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (!messages || !user) return null;
 
   return (
-    <div className="flex-1 p-4 space-y-4">
-      {messages.map((msg) => {
+    <div className="flex flex-col gap-2 p-4">
+      {messages.map(msg => {
         const message: ChannelMessage = {
           _id: msg._id,
           content: msg.content,
@@ -36,7 +28,6 @@ export function ThreadMessageList({ threadId }: ThreadMessageListProps) {
             name: msg.author?.name || '',
             email: msg.author?.email || '',
           },
-          timestamp: msg.timestamp,
           createdAt: msg.createdAt,
           channelId: msg.channelId,
           threadId: msg.threadId,
@@ -48,6 +39,7 @@ export function ThreadMessageList({ threadId }: ThreadMessageListProps) {
             key={msg._id} 
             message={message} 
             isThreadReply 
+            currentUserId={user._id}
           />
         );
       })}

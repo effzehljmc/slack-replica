@@ -10,7 +10,7 @@ import { useCurrentUser } from '@/features/auth/hooks/use-current-user';
 import { Id } from '@/convex/_generated/dataModel';
 import { ChatLayout } from '@/features/chat/components/ChatLayout';
 import { MessageItem } from '@/features/chat/components/MessageItem';
-import { Message, ChannelMessage, DirectMessage } from '@/features/chat/types';
+import { Message, ChannelMessage, DirectMessage, isChannelMessage } from '@/features/chat/types';
 import { ThreadPanel } from '@/features/chat/components/ThreadPanel';
 import { useActivityStatus } from '@/features/chat/hooks/use-activity-status';
 import { UserStatusIndicator } from "@/features/chat/components/UserStatusIndicator";
@@ -132,8 +132,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const handleThreadOpen = (message: Message) => {
-    setSelectedMessage(message);
-    setIsThreadOpen(true);
+    if (isChannelMessage(message)) {
+      setSelectedMessage(message);
+      setIsThreadOpen(true);
+    }
   };
 
   const handleThreadClose = () => {
@@ -289,6 +291,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <MessageItem
                     key={msg._id}
                     message={message}
+                    currentUserId={user!._id}
                   />
                 );
               }
@@ -314,6 +317,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   key={msg._id}
                   message={message}
                   onThreadClick={handleThreadOpen}
+                  currentUserId={user!._id}
                 />
               );
             })}

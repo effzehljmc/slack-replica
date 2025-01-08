@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { Message } from "../types";
+import { Message, ChannelMessage, isChannelMessage } from "../types";
 import { ThreadMessageList } from "./ThreadMessageList";
 import { ThreadMessageInput } from "./ThreadMessageInput";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ interface ThreadPanelProps {
 }
 
 export function ThreadPanel({ isOpen, originalMessage, onClose }: ThreadPanelProps) {
-  if (!originalMessage) return null;
+  if (!originalMessage || !isChannelMessage(originalMessage)) return null;
 
   const timestamp = originalMessage.timestamp || originalMessage.createdAt || Date.now();
 

@@ -113,4 +113,58 @@ export const listThreadMessages = query({
       author: authorMap.get(message.authorId) || { name: 'Deleted User', email: '' },
     }));
   },
+});
+
+export const editMessage = mutation({
+  args: {
+    messageId: v.id("messages"),
+    content: v.string(),
+    authorId: v.id("users"),
+  },
+  handler: async (ctx, { messageId, content, authorId }) => {
+    const message = await ctx.db.get(messageId);
+    if (!message) throw new Error("Message not found");
+    
+    // Verify the author is editing their own message
+    if (message.authorId !== authorId) {
+      throw new Error("Unauthorized: Can only edit your own messages");
+    }
+
+    await ctx.db.patch(messageId, {
+      content,
+      isEdited: true,
+      editedAt: Date.now(),
+    });
+
+    return messageId;
+  },
+});
+
+export const deleteMessage = mutation({
+  args: {
+    messageId: v.id("messages"),
+    authorId: v.id("users"),
+  },
+  handler: async (ctx, { messageId, authorId }) => {
+    const message = await ctx.db.get(messageId);
+    if (!message) throw new Error("Message not found");
+    
+    // Verify the author is deleting their own message
+    if (message.authorId !== authorId) {
+      throw new Error("Unauthorized: Can only delete your own messages");
+    }
+
+    // If this is a parent message with thread replies, we should handle it differently
+    if (message.hasThreadReplies) {
+      // Instead of deleting, mark it as deleted by updating the content
+      await ctx.db.patch(messageId, {
+        content: "[Message deleted]",
+      });
+    } else {
+      // If no thread replies, we can safely delete the message
+      await ctx.db.delete(messageId);
+    }
+
+    return messageId;
+  },
 }); 

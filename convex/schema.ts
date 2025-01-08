@@ -11,6 +11,8 @@ export default defineSchema({
     threadId: v.optional(v.id("messages")),
     hasThreadReplies: v.optional(v.boolean()),
     replyCount: v.optional(v.number()),
+    isEdited: v.optional(v.boolean()),
+    editedAt: v.optional(v.number()),
   }).index("by_thread", ["threadId"]),
 
   reactions: defineTable({
@@ -45,6 +47,8 @@ export default defineSchema({
     senderId: v.id("users"),
     receiverId: v.id("users"),
     createdAt: v.number(),
+    isEdited: v.optional(v.boolean()),
+    editedAt: v.optional(v.number()),
   })
     .index("by_participants", ["senderId", "receiverId"])
     .index("by_participants_reverse", ["receiverId", "senderId"]),

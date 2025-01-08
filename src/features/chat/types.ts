@@ -20,6 +20,8 @@ export interface ChannelMessage extends BaseMessage {
   threadId?: Id<"messages">;
   hasThreadReplies?: boolean;
   replyCount?: number;
+  isEdited?: boolean;
+  editedAt?: number;
 }
 
 // Direct message
@@ -27,6 +29,8 @@ export interface DirectMessage extends BaseMessage {
   _id: Id<"direct_messages">;
   senderId: Id<"users">;
   receiverId: Id<"users">;
+  isEdited?: boolean;
+  editedAt?: number;
 }
 
 // Union type for all message types

@@ -117,6 +117,19 @@ slack-replica/
 - **Transitions**: Smooth animations for panel operations
 - **Responsive Design**: Adapts to different screen sizes
 
+### User Status Features
+- **Visual Status Indicators**: 
+  - Green dot for active users
+  - Orange dot for away users
+  - Status indicator next to usernames
+- **Manual Status Control**:
+  - Toggle between "Active" and "Away" states
+  - Status persists across sessions
+  - Accessible via user profile dropdown
+- **Status Display**:
+  - Clear visual feedback of current status
+  - Status shown in user lists and messages
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -124,3 +137,53 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Changes
+This PR introduces user status functionality with visual indicators and manual controls:
+
+### Added Components
+- `UserStatusIndicator`: Visual dot indicator showing active/away status
+- Status toggle in UserButton dropdown menu
+- Status display in user lists
+
+### Visual Changes
+- Green dot: Active users
+- Orange dot: Away users
+- Updated user dropdown with status toggle option
+
+### Technical Changes
+- Enhanced UserButton component with status controls
+- Added status-related styling
+- Updated README with status feature documentation
+
+## Screenshots
+[Insert screenshots here showing:]
+1. Status indicator dots in action
+2. User dropdown with status toggle
+3. Status display in user lists
+
+## Testing Instructions
+1. **Manual Status Toggle:**
+   - Click your profile picture/avatar
+   - Look for "Set as Away"/"Set as Active" in dropdown
+   - Toggle between states
+   - Verify visual indicator changes
+
+2. **Status Persistence:**
+   - Set a status
+   - Refresh page
+   - Verify status remains unchanged
+
+3. **Visual Indicators:**
+   - Check that active users show green dots
+   - Check that away users show orange dots
+   - Verify indicators appear next to usernames
+
+## Dependencies
+- No new dependencies added
+- Uses existing styling system
+
+## Notes
+- Status is persisted in database
+- Compatible with existing user system
+- No breaking changes

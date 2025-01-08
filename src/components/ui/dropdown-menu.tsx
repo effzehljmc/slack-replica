@@ -25,13 +25,13 @@ export function DropdownMenu({ children, className, trigger }: DropdownMenuProps
   }, []);
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative z-50" ref={menuRef}>
       <div onClick={() => setIsOpen(!isOpen)} className="cursor-pointer">
         {trigger}
       </div>
       {isOpen && (
         <div className={cn(
-          'absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5',
+          'absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50',
           className
         )}>
           <div className="py-1" role="menu" aria-orientation="vertical">

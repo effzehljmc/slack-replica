@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 // Send a direct message
 export const sendDirectMessage = mutation({
@@ -62,5 +63,49 @@ export const getDirectMessages = query({
       ...message,
       author: userMap.get(message.senderId) || { name: 'Deleted User', email: '' },
     }));
+  },
+});
+
+export const editDirectMessage = mutation({
+  args: {
+    messageId: v.id("direct_messages"),
+    content: v.string(),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { messageId, content, userId }) => {
+    const message = await ctx.db.get(messageId);
+    if (!message) throw new Error("Message not found");
+    
+    // Verify the user is editing their own message
+    if (message.senderId !== userId) {
+      throw new Error("Unauthorized: Can only edit your own messages");
+    }
+
+    await ctx.db.patch(messageId, {
+      content,
+      isEdited: true,
+      editedAt: Date.now(),
+    });
+
+    return messageId;
+  },
+});
+
+export const deleteDirectMessage = mutation({
+  args: {
+    messageId: v.id("direct_messages"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { messageId, userId }) => {
+    const message = await ctx.db.get(messageId);
+    if (!message) throw new Error("Message not found");
+    
+    // Verify the user is deleting their own message
+    if (message.senderId !== userId) {
+      throw new Error("Unauthorized: Can only delete your own messages");
+    }
+
+    await ctx.db.delete(messageId);
+    return messageId;
   },
 }); 
