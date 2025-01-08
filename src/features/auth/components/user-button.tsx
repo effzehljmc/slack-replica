@@ -3,12 +3,22 @@
 import React from "react";
 import { useCurrentUser } from "../hooks/use-current-user";
 import { useAuth } from "../hooks/use-auth";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { UserStatusIndicator } from "@/features/chat/components/UserStatusIndicator";
 
 export function UserButton() {
   const { data: user, isLoading } = useCurrentUser();
   const { signOut } = useAuth();
+  const updateStatus = useMutation(api.users.updateStatus);
+  
+  // Get real-time status updates
+  const status = useQuery(
+    api.users.getUserStatus,
+    user?._id ? { userId: user._id } : "skip"
+  );
 
   if (isLoading) {
     return (
@@ -24,17 +34,32 @@ export function UserButton() {
 
   const fallback = user.name ? user.name.charAt(0).toUpperCase() : "U";
 
+  const toggleStatus = async () => {
+    if (!user._id) return;
+    const newStatus = status === 'away' ? 'active' : 'away';
+    await updateStatus({ userId: user._id, status: newStatus });
+  };
+
   const trigger = (
     <button className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-      <Avatar className="h-8 w-8">
-        <AvatarFallback>{fallback}</AvatarFallback>
-      </Avatar>
+      <div className="relative">
+        <Avatar className="h-8 w-8">
+          <AvatarFallback>{fallback}</AvatarFallback>
+        </Avatar>
+        <UserStatusIndicator 
+          status={status} 
+          className="absolute bottom-0 right-0 h-2.5 w-2.5 ring-2 ring-white"
+        />
+      </div>
       <span className="text-sm font-medium">{user.name || user.email}</span>
     </button>
   );
 
   return (
     <DropdownMenu trigger={trigger}>
+      <DropdownMenuItem onClick={toggleStatus}>
+        {status === 'away' ? 'Set as Active' : 'Set as Away'}
+      </DropdownMenuItem>
       <DropdownMenuItem onClick={signOut}>
         Log Out
       </DropdownMenuItem>

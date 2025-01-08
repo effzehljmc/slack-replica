@@ -36,7 +36,7 @@ export default defineSchema({
     email: v.string(),
     hashedPassword: v.string(),
     tokenIdentifier: v.string(),
-    status: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("online"), v.literal("offline"), v.literal("away"), v.literal("active"))),
   })
     .index("by_email", ["email"]),
 

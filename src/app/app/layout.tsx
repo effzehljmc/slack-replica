@@ -12,6 +12,8 @@ import { ChatLayout } from '@/features/chat/components/ChatLayout';
 import { MessageItem } from '@/features/chat/components/MessageItem';
 import { Message, ChannelMessage, DirectMessage } from '@/features/chat/types';
 import { ThreadPanel } from '@/features/chat/components/ThreadPanel';
+import { useActivityStatus } from '@/features/chat/hooks/use-activity-status';
+import { UserStatusIndicator } from "@/features/chat/components/UserStatusIndicator";
 
 interface Channel {
   _id: Id<"channels">;
@@ -22,7 +24,7 @@ interface DirectMessageUser {
   _id: Id<"users">;
   name?: string;
   email: string;
-  status?: string;
+  status?: 'online' | 'offline' | 'away' | 'active';
 }
 
 type ChatMode = 'channel' | 'direct';
@@ -39,6 +41,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isThreadOpen, setIsThreadOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Add activity status tracking
+  useActivityStatus();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -232,15 +237,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <li
                   key={otherUser._id}
                   onClick={() => handleUserSelect(otherUser)}
-                  className={`hover:bg-gray-700 rounded px-2 py-1 cursor-pointer ${
+                  className={`hover:bg-gray-700 rounded px-2 py-1 cursor-pointer flex items-center ${
                     selectedUser?._id === otherUser._id && chatMode === 'direct'
                       ? 'bg-gray-700'
                       : ''
                   }`}
                 >
-                  <span className={`w-2 h-2 ${
-                    otherUser.status === 'online' ? 'bg-green-500' : 'bg-gray-500'
-                  } rounded-full inline-block mr-2`}></span>
+                  <UserStatusIndicator status={otherUser.status} className="mr-2" />
                   {otherUser.name || otherUser.email}
                 </li>
               ))}

@@ -5,6 +5,7 @@ export interface User {
   id: string;
   email: string;
   name?: string;
+  status?: 'online' | 'offline' | 'away' | 'active';
 }
 
 export interface AuthState {

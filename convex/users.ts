@@ -13,13 +13,23 @@ export const listUsers = query({
   },
 });
 
+// Get user status
+export const getUserStatus = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    return user?.status || 'offline';
+  },
+});
+
 // Update user status
 export const updateStatus = mutation({
   args: {
     userId: v.id("users"),
-    status: v.string(),
+    status: v.union(v.literal("online"), v.literal("offline"), v.literal("away"), v.literal("active")),
   },
   handler: async (ctx, { userId, status }) => {
     await ctx.db.patch(userId, { status });
+    return status;
   },
 }); 
