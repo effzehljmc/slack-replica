@@ -554,17 +554,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
                 <div className="flex items-center gap-2 rounded-md border dark:border-gray-700 bg-white dark:bg-gray-800 px-3">
-                  <FileUpload
-                    channelId={chatMode === 'channel' ? selectedChannel?._id : undefined}
-                    onUploadComplete={(id) => setAttachmentId(id as Id<"attachments">)}
-                    compact
-                  />
                   <input
                     type="text"
                     value={messageInput}
                     onChange={handleMessageInputChange}
                     placeholder={attachmentId ? "Add a message or send without one" : "Type a message..."}
                     className="flex-1 py-2 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-0"
+                  />
+                  <FileUpload
+                    channelId={chatMode === 'channel' ? selectedChannel?._id : undefined}
+                    onUploadComplete={(id) => setAttachmentId(id as Id<"attachments">)}
+                    compact
                   />
                 </div>
                 <button

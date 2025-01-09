@@ -231,6 +231,50 @@ slack-replica/
 - **Real-time Updates**: Instant reaction synchronization
 - **Optimized Storage**: Efficient reaction data structure
 
+## Recent Updates
+
+### Typing Indicators
+- Real-time typing status for channels and direct messages
+- Automatic status clearing after 3 seconds of inactivity
+- Visual feedback when users are typing
+- Support for both channel and direct message typing indicators
+- Proper cleanup of typing status on unmount or chat change
+
+### Message Input Improvements
+- Enhanced message input UI with file upload integration
+- Right-aligned file upload button for better UX
+- Support for sending messages with or without attachments
+- Visual indicator for attached files before sending
+- Improved placeholder text based on attachment state
+
+### Theme Support
+- Added dark mode support throughout the application
+- Theme toggle button in the header
+- Consistent styling across light and dark themes
+- Proper color contrasts for better readability
+- Smooth theme transitions
+
+### Search Enhancements
+- Improved search container in the header
+- Channel and user search in sidebar
+- Real-time filtering of channels and users
+- Improved search result navigation
+- Search result highlighting
+
+### UI/UX Improvements
+- New header layout with search and user controls
+- Enhanced sidebar with separate channel and DM sections
+- Better visual hierarchy for active channels/conversations
+- Improved message grouping and spacing
+- Enhanced visual feedback for user interactions
+
+### Activity Status
+- Automatic activity status tracking
+- User presence system
+- Away status detection
+- Status persistence across sessions
+- Real-time status updates
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
