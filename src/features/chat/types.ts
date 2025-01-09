@@ -1,5 +1,17 @@
 import { Id } from "../../../convex/_generated/dataModel";
 
+interface Attachment {
+  _id: Id<"attachments">;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  storageId: string;
+  uploadedBy: Id<"users">;
+  messageId?: Id<"messages"> | Id<"direct_messages">;
+  channelId?: Id<"channels">;
+  createdAt: number;
+}
+
 // Base message interface with common properties
 interface BaseMessage {
   _id: Id<"messages"> | Id<"direct_messages">;
@@ -11,6 +23,8 @@ interface BaseMessage {
   };
   timestamp?: number;
   createdAt?: number;
+  attachmentId?: Id<"attachments">;
+  attachment?: Attachment;
 }
 
 // Regular channel message

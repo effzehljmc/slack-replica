@@ -16,6 +16,7 @@ import type {
 import type * as auth from "../auth.js";
 import type * as channels from "../channels.js";
 import type * as direct_messages from "../direct_messages.js";
+import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as migrations from "../migrations.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   channels: typeof channels;
   direct_messages: typeof direct_messages;
+  files: typeof files;
   http: typeof http;
   messages: typeof messages;
   migrations: typeof migrations;

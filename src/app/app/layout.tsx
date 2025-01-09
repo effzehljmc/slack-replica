@@ -16,6 +16,7 @@ import { useActivityStatus } from '@/features/chat/hooks/use-activity-status';
 import { UserStatusIndicator } from "@/features/chat/components/UserStatusIndicator";
 import { SearchProvider } from '@/features/search/context/search-context';
 import { SearchContainer } from '@/features/search/components/SearchContainer';
+import { FileUpload } from '@/features/chat/components/FileUpload';
 
 interface Channel {
   _id: Id<"channels">;
@@ -52,6 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isThreadOpen, setIsThreadOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [attachmentId, setAttachmentId] = useState<Id<"attachments"> | null>(null);
 
   // Add activity status tracking
   useActivityStatus();
@@ -210,23 +212,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   async function handleMessageSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!messageInput.trim() || !user?._id) return;
+    if (!messageInput.trim() && !attachmentId) return;
+    if (!user?._id) return;
 
-    if (chatMode === 'channel' && selectedChannel) {
-      await sendChannelMessage({
-        content: messageInput.trim(),
-        channelId: selectedChannel._id,
-        authorId: user._id,
-      });
-    } else if (chatMode === 'direct' && selectedUser) {
-      await sendDirectMessage({
-        content: messageInput.trim(),
-        senderId: user._id,
-        receiverId: selectedUser._id,
-      });
+    try {
+      if (chatMode === 'channel' && selectedChannel) {
+        await sendChannelMessage({
+          content: messageInput.trim(),
+          channelId: selectedChannel._id,
+          authorId: user._id,
+          attachmentId: attachmentId || undefined,
+        });
+      } else if (chatMode === 'direct' && selectedUser) {
+        await sendDirectMessage({
+          content: messageInput.trim(),
+          senderId: user._id,
+          receiverId: selectedUser._id,
+          attachmentId: attachmentId || undefined,
+        });
+      }
+      
+      setMessageInput('');
+      setAttachmentId(null);
+    } catch (error) {
+      console.error('Failed to send message:', error);
     }
-    
-    setMessageInput('');
   }
 
   function formatTime(timestamp: number) {
@@ -353,6 +363,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     createdAt: msg.createdAt,
                     senderId: msg.senderId,
                     receiverId: msg.receiverId,
+                    attachmentId: msg.attachmentId,
+                    attachment: msg.attachment,
+                    isEdited: msg.isEdited,
+                    editedAt: msg.editedAt,
                   };
                   return (
                     <MessageItem
@@ -378,6 +392,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   threadId: msg.threadId,
                   hasThreadReplies: msg.hasThreadReplies,
                   replyCount: msg.replyCount,
+                  attachmentId: msg.attachmentId,
+                  attachment: msg.attachment,
+                  isEdited: msg.isEdited,
+                  editedAt: msg.editedAt,
                 };
                 return (
                   <MessageItem
@@ -393,17 +411,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Message Input */}
             <div className="p-4 border-t dark:border-gray-800">
-              <form onSubmit={handleMessageSubmit} className="flex space-x-2">
-                <input
-                  type="text"
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 rounded-md border dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <form onSubmit={handleMessageSubmit} className="flex flex-col gap-2">
+                {attachmentId && (
+                  <div className="px-2">
+                    <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                      File attached
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 rounded-md border dark:border-gray-700 bg-white dark:bg-gray-800 px-3">
+                  <FileUpload
+                    channelId={chatMode === 'channel' ? selectedChannel?._id : undefined}
+                    onUploadComplete={(id) => setAttachmentId(id as Id<"attachments">)}
+                    compact
+                  />
+                  <input
+                    type="text"
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    placeholder={attachmentId ? "Add a message or send without one" : "Type a message..."}
+                    className="flex-1 py-2 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-0"
+                  />
+                </div>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={!messageInput.trim() && !attachmentId}
                 >
                   Send
                 </button>

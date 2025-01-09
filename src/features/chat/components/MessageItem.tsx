@@ -11,6 +11,7 @@ import { api } from "@/convex/_generated/api";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { MessageAttachment } from "./MessageAttachment";
 
 interface MessageItemProps {
   message: Message;
@@ -195,7 +196,19 @@ export function MessageItem({ message, isThreadReply, onThreadClick, currentUser
             </div>
           </div>
         ) : (
-          <p className="mt-1">{message.content}</p>
+          <div className="mt-1 space-y-2">
+            <p>{message.content}</p>
+            {message.attachment && (
+              <div className="mt-2">
+                <MessageAttachment 
+                  fileName={message.attachment.fileName}
+                  fileType={message.attachment.fileType}
+                  storageId={message.attachment.storageId}
+                  fileSize={message.attachment.fileSize}
+                />
+              </div>
+            )}
+          </div>
         )}
         <MessageReactions 
           targetId={message._id} 

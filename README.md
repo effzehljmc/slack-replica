@@ -191,6 +191,26 @@ slack-replica/
   - Efficient client-side filtering
   - Smooth animations and transitions
 
+### File System
+- **Upload**: Secure file uploads using Convex Storage
+- **Download**: Proper file downloads with correct content types
+- **Preview**: Image preview for supported file types
+- **Progress**: Loading states for upload/download operations
+- **Error Handling**: Comprehensive error handling and feedback
+
+### Message System
+- **Dual Message Types**: Supports both channel messages and direct messages
+- **Real-time Updates**: Uses Convex's real-time capabilities
+- **Optimistic Updates**: Immediate UI feedback for better UX
+- **Message States**: Handles editing, deletion, and thread replies
+- **File Attachments**: Support for file uploads and downloads in messages
+
+### Reaction System
+- **Emoji Support**: Six predefined emoji reactions
+- **User Tracking**: Tracks who reacted with what
+- **Real-time Updates**: Instant reaction synchronization
+- **Optimized Storage**: Efficient reaction data structure
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -256,6 +276,7 @@ This PR introduces user status functionality with visual indicators and manual c
 - **Real-time Updates**: Uses Convex's real-time capabilities
 - **Optimistic Updates**: Immediate UI feedback for better UX
 - **Message States**: Handles editing, deletion, and thread replies
+- **File Attachments**: Support for file uploads and downloads in messages
 
 ### Reaction System
 - **Emoji Support**: Six predefined emoji reactions

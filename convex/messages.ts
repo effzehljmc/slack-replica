@@ -8,14 +8,24 @@ export const sendMessage = mutation({
     content: v.string(),
     channelId: v.id("channels"),
     authorId: v.id("users"),
+    attachmentId: v.optional(v.id("attachments")),
   },
-  handler: async (ctx, {content, channelId, authorId }) => {
+  handler: async (ctx, {content, channelId, authorId, attachmentId }) => {
     const messageId = await ctx.db.insert("messages", {
       content,
       channelId,
       authorId,
+      attachmentId,
       timestamp: Date.now(),
     });
+
+    // If there's an attachment, update it with the message ID
+    if (attachmentId) {
+      await ctx.db.patch(attachmentId, {
+        messageId,
+      });
+    }
+
     return messageId;
   },
 });
@@ -25,6 +35,7 @@ export const sendThreadMessage = mutation({
     content: v.string(),
     threadId: v.id("messages"),
     authorId: v.id("users"),
+    attachmentId: v.optional(v.id("attachments")),
   },
   handler: async (ctx, args) => {
     // Get the original message to get the channel ID
@@ -38,6 +49,7 @@ export const sendThreadMessage = mutation({
       authorId: args.authorId,
       timestamp: Date.now(),
       threadId: args.threadId,
+      attachmentId: args.attachmentId,
     });
 
     // Update original message
@@ -45,6 +57,13 @@ export const sendThreadMessage = mutation({
       hasThreadReplies: true,
       replyCount: (originalMessage.replyCount || 0) + 1,
     });
+
+    // If there's an attachment, update it with the message ID
+    if (args.attachmentId) {
+      await ctx.db.patch(args.attachmentId, {
+        messageId,
+      });
+    }
 
     return messageId;
   },
@@ -79,10 +98,28 @@ export const getMessages = query({
         .map(author => [author._id, author])
     );
 
-    // Combine messages with author data
+    // Get all attachment IDs
+    const attachmentIds = messages
+      .map(msg => msg.attachmentId)
+      .filter((id): id is Id<"attachments"> => id !== undefined);
+
+    // Fetch all attachments in one query
+    const attachments = await Promise.all(
+      attachmentIds.map(id => ctx.db.get(id))
+    );
+
+    // Create a map of attachment IDs to attachment data
+    const attachmentMap = new Map(
+      attachments
+        .filter((attachment): attachment is NonNullable<typeof attachment> => attachment !== null)
+        .map(attachment => [attachment._id, attachment])
+    );
+
+    // Combine messages with author and attachment data
     return messages.map(message => ({
       ...message,
       author: authorMap.get(message.authorId) || { name: 'Deleted User', email: '' },
+      attachment: message.attachmentId ? attachmentMap.get(message.attachmentId) : undefined,
     }));
   },
 });
@@ -110,9 +147,27 @@ export const listThreadMessages = query({
         .map(author => [author._id, author])
     );
 
+    // Get all attachment IDs
+    const attachmentIds = messages
+      .map(msg => msg.attachmentId)
+      .filter((id): id is Id<"attachments"> => id !== undefined);
+
+    // Fetch all attachments in one query
+    const attachments = await Promise.all(
+      attachmentIds.map(id => ctx.db.get(id))
+    );
+
+    // Create a map of attachment IDs to attachment data
+    const attachmentMap = new Map(
+      attachments
+        .filter((attachment): attachment is NonNullable<typeof attachment> => attachment !== null)
+        .map(attachment => [attachment._id, attachment])
+    );
+
     return messages.map(message => ({
       ...message,
       author: authorMap.get(message.authorId) || { name: 'Deleted User', email: '' },
+      attachment: message.attachmentId ? attachmentMap.get(message.attachmentId) : undefined,
     }));
   },
 });
@@ -163,7 +218,11 @@ export const deleteMessage = mutation({
         content: "[Message deleted]",
       });
     } else {
-      // If no thread replies, we can safely delete the message
+      // Delete the attachment if it exists
+      if (message.attachmentId) {
+        await ctx.db.delete(message.attachmentId);
+      }
+      // Delete the message
       await ctx.db.delete(messageId);
     }
 

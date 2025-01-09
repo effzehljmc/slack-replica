@@ -8,14 +8,24 @@ export const sendDirectMessage = mutation({
     content: v.string(),
     senderId: v.id("users"),
     receiverId: v.id("users"),
+    attachmentId: v.optional(v.id("attachments")),
   },
-  handler: async (ctx, { content, senderId, receiverId }) => {
+  handler: async (ctx, { content, senderId, receiverId, attachmentId }) => {
     const messageId = await ctx.db.insert("direct_messages", {
       content,
       senderId,
       receiverId,
+      attachmentId,
       createdAt: Date.now(),
     });
+
+    // If there's an attachment, update it with the message ID
+    if (attachmentId) {
+      await ctx.db.patch(attachmentId, {
+        messageId,
+      });
+    }
+
     return messageId;
   },
 });
@@ -58,10 +68,28 @@ export const getDirectMessages = query({
       [userId2, user2],
     ]);
 
-    // Add user data to messages
+    // Get all attachment IDs
+    const attachmentIds = allMessages
+      .map(msg => msg.attachmentId)
+      .filter((id): id is Id<"attachments"> => id !== undefined);
+
+    // Fetch all attachments in one query if there are any attachments
+    const attachments = attachmentIds.length > 0 
+      ? await Promise.all(attachmentIds.map(id => ctx.db.get(id)))
+      : [];
+
+    // Create a map of attachment IDs to attachment data
+    const attachmentMap = new Map(
+      attachments
+        .filter((attachment): attachment is NonNullable<typeof attachment> => attachment !== null)
+        .map(attachment => [attachment._id, attachment])
+    );
+
+    // Add user data and attachments to messages
     return allMessages.map(message => ({
       ...message,
       author: userMap.get(message.senderId) || { name: 'Deleted User', email: '' },
+      attachment: message.attachmentId ? attachmentMap.get(message.attachmentId) : undefined,
     }));
   },
 });
@@ -103,6 +131,11 @@ export const deleteDirectMessage = mutation({
     // Verify the user is deleting their own message
     if (message.senderId !== userId) {
       throw new Error("Unauthorized: Can only delete your own messages");
+    }
+
+    // Delete the attachment if it exists
+    if (message.attachmentId) {
+      await ctx.db.delete(message.attachmentId);
     }
 
     await ctx.db.delete(messageId);

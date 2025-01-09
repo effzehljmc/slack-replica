@@ -13,6 +13,7 @@ export default defineSchema({
     replyCount: v.optional(v.number()),
     isEdited: v.optional(v.boolean()),
     editedAt: v.optional(v.number()),
+    attachmentId: v.optional(v.id("attachments")),
   })
     .index("by_thread", ["threadId"])
     .index("by_channel", ["channelId"])
@@ -53,10 +54,22 @@ export default defineSchema({
     createdAt: v.number(),
     isEdited: v.optional(v.boolean()),
     editedAt: v.optional(v.number()),
+    attachmentId: v.optional(v.id("attachments")),
   })
     .index("by_participants", ["senderId", "receiverId"])
     .index("by_participants_reverse", ["receiverId", "senderId"])
     .index("by_sender", ["senderId"])
     .index("by_receiver", ["receiverId"])
     .index("by_creation", ["createdAt"]),
+
+  attachments: defineTable({
+    fileName: v.string(),
+    fileType: v.string(),
+    fileSize: v.number(),
+    storageId: v.string(),
+    uploadedBy: v.id("users"),
+    messageId: v.optional(v.union(v.id("messages"), v.id("direct_messages"))),
+    channelId: v.optional(v.id("channels")),
+    createdAt: v.number(),
+  }),
 });
