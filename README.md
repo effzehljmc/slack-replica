@@ -14,6 +14,14 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
   - Thread support with dedicated panel
   - Seamless conversation threading
 
+- 🧵 **Advanced Search**
+  - Real-time search across messages and DMs
+  - Filter by date range, user, and channel
+  - Keyboard shortcuts (⌘K to open, Esc to close)
+  - Message highlighting with context
+  - Smart navigation to search results
+  - Recent searches functionality
+
 - 🧵 **Thread Features**
   - Click messages to open threads
   - Dedicated right-side panel for thread discussions
@@ -21,6 +29,27 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
   - Original message context preserved
   - Smart panel management (auto-closes when switching channels)
   - Smooth transitions and animations
+
+- 📱� **Direct Messages**
+  - Private one-on-one conversations
+  - Real-time message delivery
+  - Seamless switching between channels and DMs
+  - Message history persistence
+  - User online/away status indicators
+
+- 👍 **Message Reactions**
+  - Six emoji reactions available (👍 ❤️ 😂 😮 😢 🎉)
+  - Multiple reactions per message
+  - Real-time reaction updates
+  - Reaction counts and user tracking
+  - Easy-to-use reaction picker
+
+- ✏️ **Message Management**
+  - Edit your own messages
+  - Delete messages with confirmation
+  - Visual indicators for edited messages
+  - Graceful handling of thread message deletion
+  - Keyboard shortcuts for editing (Enter to save, Escape to cancel)
 
 - 📱 **Modern UI**
   - Clean, responsive design
@@ -92,8 +121,19 @@ slack-replica/
 │   └── features/        # Feature modules
 │       ├── auth/        # Authentication
 │       ├── chat/        # Messaging & threads
+│           ├── components/    # Chat UI components
+│           │   ├── MessageItem.tsx      # Message display
+│           │   ├── MessageReactions.tsx  # Reaction system
+│           │   ├── ThreadPanel.tsx      # Thread UI
+│           │   └── ThreadMessageList.tsx # Thread messages
+│           └── types.ts       # Type definitions
 │       └── ui/          # Shared UI components
 ├── convex/              # Backend functions
+│   ├── messages.ts      # Channel messages
+│   ├── direct_messages.ts # Private messages
+│   ├── reactions.ts     # Message reactions
+│   ├── channels.ts      # Channel management
+│   └── schema.ts        # Database schema
 └── public/             # Static assets
 ```
 
@@ -129,6 +169,27 @@ slack-replica/
 - **Status Display**:
   - Clear visual feedback of current status
   - Status shown in user lists and messages
+
+### Search Functionality
+- **Global Search**: Search across all messages and direct messages
+- **Smart Filtering**:
+  - Date range picker for temporal filtering
+  - User filter for finding specific authors
+  - Channel filter for focused searches
+- **Rich Results**:
+  - Context-aware result display
+  - Highlighted search terms
+  - Message timestamps and authors
+  - One-click navigation to messages
+- **User Experience**:
+  - Keyboard shortcuts for quick access
+  - Loading states and error handling
+  - Empty state handling
+  - Recent searches suggestions
+- **Performance**:
+  - Debounced search for optimal performance
+  - Efficient client-side filtering
+  - Smooth animations and transitions
 
 ## Contributing
 
@@ -187,3 +248,32 @@ This PR introduces user status functionality with visual indicators and manual c
 - Status is persisted in database
 - Compatible with existing user system
 - No breaking changes
+
+## Technical Implementation
+
+### Message System
+- **Dual Message Types**: Supports both channel messages and direct messages
+- **Real-time Updates**: Uses Convex's real-time capabilities
+- **Optimistic Updates**: Immediate UI feedback for better UX
+- **Message States**: Handles editing, deletion, and thread replies
+
+### Reaction System
+- **Emoji Support**: Six predefined emoji reactions
+- **User Tracking**: Tracks who reacted with what
+- **Real-time Updates**: Instant reaction synchronization
+- **Optimized Storage**: Efficient reaction data structure
+
+### Database Schema
+- **Messages**: Stores channel messages with thread support
+- **Direct Messages**: Handles private conversations
+- **Reactions**: Flexible reaction system for both message types
+- **Users**: User profiles with status tracking
+- **Channels**: Channel management and metadata
+
+### Search System
+- **Real-time Search**: Instant results as you type
+- **Filter Combinations**: Multiple filters can be combined
+- **Context Preservation**: Shows message context in results
+- **Navigation**: Smart scroll to message on selection
+- **State Management**: Centralized search context
+- **Accessibility**: Keyboard navigation and ARIA labels

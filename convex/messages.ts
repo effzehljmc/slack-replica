@@ -58,6 +58,7 @@ export const getMessages = query({
   handler: async (ctx, args) => {
     const messages = await ctx.db
       .query("messages")
+      .withIndex("by_channel")
       .filter((q) => q.eq(q.field("channelId"), args.channelId))
       .filter((q) => q.eq(q.field("threadId"), undefined))
       .order("asc")
@@ -93,7 +94,8 @@ export const listThreadMessages = query({
   handler: async (ctx, { threadId }) => {
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
+      .withIndex("by_thread")
+      .filter((q) => q.eq(q.field("threadId"), threadId))
       .order("asc")
       .collect();
 

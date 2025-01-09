@@ -20,6 +20,7 @@ import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as migrations from "../migrations.js";
 import type * as reactions from "../reactions.js";
+import type * as search from "../search.js";
 import type * as users from "../users.js";
 
 /**
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   migrations: typeof migrations;
   reactions: typeof reactions;
+  search: typeof search;
   users: typeof users;
 }>;
 export declare const api: FilterApi<

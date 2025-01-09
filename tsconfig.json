@@ -8,7 +8,7 @@
       "@/convex/*": ["./convex/*"]
     },
     "jsx": "preserve",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "strict": true,
     "esModuleInterop": true,
     "lib": [

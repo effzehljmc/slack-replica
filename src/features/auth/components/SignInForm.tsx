@@ -13,7 +13,7 @@ export function SignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const signIn = useMutation(api.auth.signIn);
+  const signIn = useMutation(api.auth.signIn as any); // Type assertion to fix type error temporarily
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

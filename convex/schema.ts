@@ -13,7 +13,11 @@ export default defineSchema({
     replyCount: v.optional(v.number()),
     isEdited: v.optional(v.boolean()),
     editedAt: v.optional(v.number()),
-  }).index("by_thread", ["threadId"]),
+  })
+    .index("by_thread", ["threadId"])
+    .index("by_channel", ["channelId"])
+    .index("by_author", ["authorId"])
+    .index("by_creation", ["createdAt"]),
 
   reactions: defineTable({
     messageId: v.optional(v.id("messages")),
@@ -51,5 +55,8 @@ export default defineSchema({
     editedAt: v.optional(v.number()),
   })
     .index("by_participants", ["senderId", "receiverId"])
-    .index("by_participants_reverse", ["receiverId", "senderId"]),
+    .index("by_participants_reverse", ["receiverId", "senderId"])
+    .index("by_sender", ["senderId"])
+    .index("by_receiver", ["receiverId"])
+    .index("by_creation", ["createdAt"]),
 });

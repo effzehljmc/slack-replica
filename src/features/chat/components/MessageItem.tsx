@@ -100,10 +100,13 @@ export function MessageItem({ message, isThreadReply, onThreadClick, currentUser
     : message.senderId === currentUserId;
 
   return (
-    <div className={cn(
-      "group flex items-start gap-3 py-2 px-3 hover:bg-gray-50 rounded-lg transition-colors relative",
-      isThreadReply && "pl-6"
-    )}>
+    <div 
+      id={`message-${message._id}`}
+      className={cn(
+        "group px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50",
+        "transition-colors duration-200"
+      )}
+    >
       <div className="flex-1">
         <div className="flex items-center gap-2">
           <span className="font-medium">{authorName}</span>
