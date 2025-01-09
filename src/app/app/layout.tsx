@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [userSearch, setUserSearch] = useState('');
   const updateTypingStatus = useMutation(api.typing.updateTypingStatus);
   const removeTypingStatus = useMutation(api.typing.removeTypingStatus);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Add activity status tracking
   useActivityStatus();
