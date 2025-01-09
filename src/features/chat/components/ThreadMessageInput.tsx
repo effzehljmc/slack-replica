@@ -18,6 +18,7 @@ export function ThreadMessageInput({ threadId }: ThreadMessageInputProps) {
   const [isLoading, setIsLoading] = useState(false);
   
   const sendMessage = useMutation(api.messages.sendThreadMessage);
+  const updateReplyCount = useMutation(api.messages.updateThreadReplyCount);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,6 +31,7 @@ export function ThreadMessageInput({ threadId }: ThreadMessageInputProps) {
         threadId,
         authorId: user._id,
       });
+      await updateReplyCount({ threadId });
       setContent("");
     } catch (error) {
       console.error("Failed to send message:", error);

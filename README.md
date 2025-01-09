@@ -13,6 +13,14 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
   - Message history persistence
   - Thread support with dedicated panel
   - Seamless conversation threading
+  - Message organization by date
+  - Visual separators between days
+  - Smart consecutive message grouping
+  - Clear visual hierarchy
+  - Real-time thread updates
+  - Reply count indicators
+  - Message continuation detection
+  - Smart message grouping
 
 - 🧵 **Advanced Search**
   - Real-time search across messages and DMs
@@ -29,8 +37,14 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
   - Original message context preserved
   - Smart panel management (auto-closes when switching channels)
   - Smooth transitions and animations
+  - Real-time reply counter
+  - Visual indicators for threaded messages
+  - Instant thread updates
+  - Thread reply notifications
+  - Optimistic UI updates for better UX
+  - Consistent styling with main chat
 
-- 📱� **Direct Messages**
+- 📱 **Direct Messages**
   - Private one-on-one conversations
   - Real-time message delivery
   - Seamless switching between channels and DMs
@@ -50,6 +64,9 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
   - Visual indicators for edited messages
   - Graceful handling of thread message deletion
   - Keyboard shortcuts for editing (Enter to save, Escape to cancel)
+  - Date separators between messages from different days
+  - Clear visual organization of chat history
+  - Consistent styling across themes
 
 - 📱 **Modern UI**
   - Clean, responsive design
@@ -57,6 +74,9 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
   - Adaptive layout for thread views
   - Intuitive visual hierarchy
   - Smooth transitions and animations
+  - Light and dark theme support
+  - Clear message organization
+  - Consistent spacing and alignment
 
 ## Quick Start
 

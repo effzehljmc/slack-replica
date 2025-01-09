@@ -155,9 +155,17 @@ export const searchAllMessages = query({
 
     // Combine and sort all messages by creation date
     const allMessages: SearchResult[] = [...enrichedChannelMessages, ...enrichedDirectMessages]
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .sort((a, b) => {
+        const dateA = a.createdAt || 0;
+        const dateB = b.createdAt || 0;
+        return dateB - dateA;
+      })
       .slice(0, limit);
 
-    return allMessages;
+    // Ensure all messages have a createdAt timestamp
+    return allMessages.map(msg => ({
+      ...msg,
+      createdAt: msg.createdAt || Date.now(), // Fallback to current time if missing
+    }));
   },
 }); 

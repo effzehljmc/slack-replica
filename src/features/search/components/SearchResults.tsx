@@ -6,22 +6,24 @@ import { cn } from '@/lib/utils';
 import { format, isValid } from 'date-fns';
 
 function formatDate(date: Date | number | string) {
+  if (!date) return 'No date';
   try {
     const d = new Date(date);
-    if (!isValid(d)) return 'Invalid date';
+    if (!isValid(d)) return 'No date';
     return format(d, 'MMM d, yyyy');
   } catch (error) {
-    return 'Invalid date';
+    return 'No date';
   }
 }
 
 function formatTime(date: Date | number | string) {
+  if (!date) return 'No time';
   try {
     const d = new Date(date);
-    if (!isValid(d)) return 'Invalid time';
+    if (!isValid(d)) return 'No time';
     return format(d, 'h:mm a');
   } catch (error) {
-    return 'Invalid time';
+    return 'No time';
   }
 }
 
@@ -119,7 +121,7 @@ export function SearchResults() {
                   </>
                 )}
                 <span>
-                  {formatDate(result.createdAt)} at {formatTime(result.createdAt)}
+                  {result.createdAt ? `${formatDate(result.createdAt)} at ${formatTime(result.createdAt)}` : 'No date'}
                 </span>
               </div>
               <div className="flex items-start gap-3">

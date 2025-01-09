@@ -17,6 +17,7 @@ import { UserStatusIndicator } from "@/features/chat/components/UserStatusIndica
 import { SearchProvider } from '@/features/search/context/search-context';
 import { SearchContainer } from '@/features/search/components/SearchContainer';
 import { FileUpload } from '@/features/chat/components/FileUpload';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface Channel {
   _id: Id<"channels">;
@@ -54,6 +55,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isThreadOpen, setIsThreadOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [attachmentId, setAttachmentId] = useState<Id<"attachments"> | null>(null);
+  const [channelSearch, setChannelSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
 
   // Add activity status tracking
   useActivityStatus();
@@ -255,7 +258,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="w-64 bg-gray-800 text-white flex flex-col">
             {/* Workspace Header */}
             <div className="p-4 border-b border-gray-700">
-              <h1 className="text-xl font-semibold">Workspace</h1>
+              <h1 className="text-xl font-semibold">ChatGenius</h1>
             </div>
 
             {/* Channels Section */}
@@ -271,6 +274,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   +
                 </button>
               </div>
+              
+              {/* Channel Search */}
+              <div className="mb-2">
+                <input
+                  type="text"
+                  placeholder="Search channels..."
+                  value={channelSearch}
+                  onChange={(e) => setChannelSearch(e.target.value)}
+                  className="w-full px-2 py-1 text-sm bg-gray-700 rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-gray-200 placeholder-gray-400"
+                />
+              </div>
+
               {showChannelInput && (
                 <form onSubmit={handleChannelSubmit} className="mb-2 space-y-2">
                   <input
@@ -289,17 +304,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </form>
               )}
               <ul className="space-y-1">
-                {channels.map((channel: Channel) => (
+                {channels
+                  .filter(channel => 
+                    channel.name.toLowerCase().includes(channelSearch.toLowerCase())
+                  )
+                  .map((channel: Channel) => (
                   <li
                     key={channel._id}
                     onClick={() => handleChannelSelect(channel)}
-                    className={`hover:bg-gray-700 rounded px-2 py-1 cursor-pointer ${
-                      selectedChannel?._id === channel._id && chatMode === 'channel'
-                        ? 'bg-gray-700'
-                        : ''
-                    }`}
+                    className={`
+                      hover:bg-gray-700 rounded px-2 py-1.5 cursor-pointer
+                      transition-all duration-200
+                      ${selectedChannel?._id === channel._id && chatMode === 'channel'
+                        ? 'bg-gray-700 font-semibold border-l-4 border-blue-500 pl-1'
+                        : 'border-l-4 border-transparent'
+                      }
+                    `}
                   >
-                    # {channel.name}
+                    <span className="flex items-center">
+                      <span className="text-gray-400">#</span>
+                      <span className="ml-1">{channel.name}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -310,19 +335,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <h2 className="text-sm font-semibold text-gray-400 uppercase mb-2">
                 Direct Messages
               </h2>
+              
+              {/* DM Search */}
+              <div className="mb-2">
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full px-2 py-1 text-sm bg-gray-700 rounded border border-gray-600 focus:outline-none focus:border-blue-500 text-gray-200 placeholder-gray-400"
+                />
+              </div>
+
               <ul className="space-y-1">
-                {users.map((otherUser: DirectMessageUser) => (
+                {users
+                  .filter(user => 
+                    (user.name || user.email).toLowerCase().includes(userSearch.toLowerCase())
+                  )
+                  .map((otherUser: DirectMessageUser) => (
                   <li
                     key={otherUser._id}
                     onClick={() => handleUserSelect(otherUser)}
-                    className={`hover:bg-gray-700 rounded px-2 py-1 cursor-pointer flex items-center ${
-                      selectedUser?._id === otherUser._id && chatMode === 'direct'
-                        ? 'bg-gray-700'
-                        : ''
-                    }`}
+                    className={`
+                      hover:bg-gray-700 rounded px-2 py-1.5 cursor-pointer
+                      transition-all duration-200 flex items-center
+                      ${selectedUser?._id === otherUser._id && chatMode === 'direct'
+                        ? 'bg-gray-700 font-semibold border-l-4 border-blue-500 pl-1'
+                        : 'border-l-4 border-transparent'
+                      }
+                    `}
                   >
                     <UserStatusIndicator status={otherUser.status} className="mr-2" />
-                    {otherUser.name || otherUser.email}
+                    <span className="truncate">{otherUser.name || otherUser.email}</span>
                   </li>
                 ))}
               </ul>
@@ -343,7 +387,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </h2>
                 <SearchContainer />
               </div>
-              <UserButton />
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <UserButton />
+              </div>
             </header>
 
             {/* Messages Area */}
