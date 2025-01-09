@@ -20,7 +20,7 @@ export function useActivityStatus() {
     user?._id ? { userId: user._id } : "skip"
   );
 
-  const setStatus = useCallback(async (newStatus: 'active' | 'away' | 'offline') => {
+  const setStatus = useCallback(async (newStatus: 'online' | 'away' | 'offline') => {
     if (!user?._id || newStatus === currentStatus) return;
 
     const now = Date.now();
@@ -47,7 +47,7 @@ export function useActivityStatus() {
 
     const timer = setTimeout(() => {
       if (pendingStatusRef.current) {
-        setStatus(pendingStatusRef.current as 'active' | 'away' | 'offline');
+        setStatus(pendingStatusRef.current as 'online' | 'away' | 'offline');
       }
     }, UPDATE_THROTTLE);
 
@@ -59,8 +59,8 @@ export function useActivityStatus() {
       clearTimeout(timeoutRef.current);
     }
 
-    if (currentStatus !== 'active') {
-      setStatus('active');
+    if (currentStatus !== 'online') {
+      setStatus('online');
     }
     
     timeoutRef.current = setTimeout(() => {
@@ -73,10 +73,8 @@ export function useActivityStatus() {
     const handleUnload = () => {
       if (user?._id) {
         // Synchronous update for window close
-        navigator.sendBeacon(
-          '/api/status',
-          JSON.stringify({ userId: user._id, status: 'offline' })
-        );
+        const beaconData = JSON.stringify({ userId: user._id, status: 'offline' });
+        navigator.sendBeacon('/api/status', beaconData);
       }
     };
 
@@ -114,9 +112,20 @@ export function useActivityStatus() {
       }, 1000);
     };
 
-    // Set initial status if not already set
-    if (!currentStatus) {
-      setStatus('active');
+    // Set initial status with delay if offline
+    console.log("Current status on load:", currentStatus);
+    if (currentStatus === 'offline') {
+      console.log("Currently offline, will set online after delay");
+      const timer = setTimeout(() => {
+        console.log("Setting delayed online status");
+        setStatus('online');
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else if (!currentStatus) {
+      console.log("No status set, setting to online");
+      setStatus('online');
+    } else {
+      console.log("Status already set to:", currentStatus);
     }
 
     // Add event listeners

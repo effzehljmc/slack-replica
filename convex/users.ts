@@ -9,7 +9,25 @@ export const listUsers = query({
       .query("users")
       .collect();
     
-    return users.filter(user => user._id !== currentUserId);
+    const now = Date.now();
+    const OFFLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+
+    return users
+      .filter(user => user._id !== currentUserId)
+      .map(user => {
+        // If user has never been seen or hasn't been seen in 5 minutes, they're offline
+        if (!user.lastSeenAt || (now - user.lastSeenAt > OFFLINE_THRESHOLD)) {
+          return { ...user, status: 'offline' as const };
+        }
+
+        // If status is not explicitly set to 'online' or 'away', set to 'offline'
+        if (!user.status || !['online', 'away'].includes(user.status)) {
+          return { ...user, status: 'offline' as const };
+        }
+
+        // Keep existing status if it's valid
+        return user;
+      });
   },
 });
 
@@ -26,10 +44,14 @@ export const getUserStatus = query({
 export const updateStatus = mutation({
   args: {
     userId: v.id("users"),
-    status: v.union(v.literal("online"), v.literal("offline"), v.literal("away"), v.literal("active")),
+    status: v.union(v.literal("online"), v.literal("offline"), v.literal("away")),
   },
   handler: async (ctx, { userId, status }) => {
-    await ctx.db.patch(userId, { status });
+    const now = Date.now();
+    await ctx.db.patch(userId, { 
+      status,
+      lastSeenAt: now
+    });
     return status;
   },
 }); 

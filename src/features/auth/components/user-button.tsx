@@ -36,7 +36,7 @@ export function UserButton() {
 
   const toggleStatus = async () => {
     if (!user._id) return;
-    const newStatus = status === 'away' ? 'active' : 'away';
+    const newStatus = status === 'away' ? 'online' : 'away';
     await updateStatus({ userId: user._id, status: newStatus });
   };
 
@@ -58,7 +58,7 @@ export function UserButton() {
   return (
     <DropdownMenu trigger={trigger}>
       <DropdownMenuItem onClick={toggleStatus}>
-        {status === 'away' ? 'Set as Active' : 'Set as Away'}
+        {status === 'away' ? 'Set as Online' : 'Set as Away'}
       </DropdownMenuItem>
       <DropdownMenuItem onClick={signOut}>
         Log Out

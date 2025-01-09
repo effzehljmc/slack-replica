@@ -50,6 +50,8 @@ export const createUser = mutation({
       hashedPassword: args.hashedPassword,
       name: args.name,
       tokenIdentifier: args.tokenIdentifier,
+      status: 'offline',
+      lastSeenAt: Date.now(),
     });
   },
 });

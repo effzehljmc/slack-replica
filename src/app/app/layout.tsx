@@ -28,7 +28,7 @@ interface DirectMessageUser {
   _id: Id<"users">;
   name?: string;
   email: string;
-  status?: 'online' | 'offline' | 'away' | 'active';
+  status?: 'online' | 'offline' | 'away';
 }
 
 type ChatMode = 'channel' | 'direct';
@@ -108,13 +108,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.push('/');
     }
   }, [isAuthenticated, router]);
-
-  // Update user status when component mounts
-  useEffect(() => {
-    if (user?._id) {
-      updateStatus({ userId: user._id, status: 'online' });
-    }
-  }, [user?._id]);
 
   // Handle navigation from search results
   useEffect(() => {
