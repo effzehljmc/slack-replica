@@ -20,6 +20,16 @@ export default defineSchema({
     .index("by_author", ["authorId"])
     .index("by_creation", ["createdAt"]),
 
+  typing_indicators: defineTable({
+    userId: v.id("users"),
+    channelId: v.optional(v.id("channels")),
+    receiverId: v.optional(v.id("users")),
+    chatType: v.union(v.literal("channel"), v.literal("direct")),
+    lastTypedAt: v.number(),
+  })
+    .index("by_channel", ["channelId"])
+    .index("by_direct", ["receiverId"]),
+
   reactions: defineTable({
     messageId: v.optional(v.id("messages")),
     targetId: v.optional(v.union(v.id("messages"), v.id("direct_messages"))),

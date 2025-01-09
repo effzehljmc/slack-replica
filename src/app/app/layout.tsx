@@ -18,6 +18,7 @@ import { SearchProvider } from '@/features/search/context/search-context';
 import { SearchContainer } from '@/features/search/components/SearchContainer';
 import { FileUpload } from '@/features/chat/components/FileUpload';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { TypingIndicator } from "@/features/chat/components/TypingIndicator";
 
 interface Channel {
   _id: Id<"channels">;
@@ -57,6 +58,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [attachmentId, setAttachmentId] = useState<Id<"attachments"> | null>(null);
   const [channelSearch, setChannelSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const updateTypingStatus = useMutation(api.typing.updateTypingStatus);
+  const removeTypingStatus = useMutation(api.typing.removeTypingStatus);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Add activity status tracking
   useActivityStatus();
@@ -162,6 +166,76 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     window.addEventListener('navigate-to-message', handleNavigateToMessage);
     return () => window.removeEventListener('navigate-to-message', handleNavigateToMessage);
   }, [channels, users]);
+
+  const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessageInput(e.target.value);
+    
+    if (!user?._id) return;
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Update typing status based on chat mode
+    if (chatMode === 'channel' && selectedChannel) {
+      updateTypingStatus({
+        userId: user._id,
+        channelId: selectedChannel._id,
+        chatType: "channel",
+      });
+    } else if (chatMode === 'direct' && selectedUser) {
+      updateTypingStatus({
+        userId: user._id,
+        receiverId: selectedUser._id,
+        chatType: "direct",
+      });
+    }
+
+    // Set timeout to remove typing status after 3 seconds
+    typingTimeoutRef.current = setTimeout(() => {
+      if (!user?._id) return;
+
+      if (chatMode === 'channel' && selectedChannel) {
+        removeTypingStatus({
+          userId: user._id,
+          channelId: selectedChannel._id,
+          chatType: "channel",
+        });
+      } else if (chatMode === 'direct' && selectedUser) {
+        removeTypingStatus({
+          userId: user._id,
+          receiverId: selectedUser._id,
+          chatType: "direct",
+        });
+      }
+    }, 3000);
+  };
+
+  // Cleanup typing status on unmount or chat change
+  useEffect(() => {
+    if (!user?._id) return;
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      if (chatMode === 'channel' && selectedChannel) {
+        removeTypingStatus({
+          userId: user._id,
+          channelId: selectedChannel._id,
+          chatType: "channel",
+        }).catch(console.error);
+      } else if (chatMode === 'direct' && selectedUser) {
+        removeTypingStatus({
+          userId: user._id,
+          receiverId: selectedUser._id,
+          chatType: "direct",
+        }).catch(console.error);
+      }
+    };
+  }, [chatMode, selectedChannel, selectedUser, user, removeTypingStatus]);
 
   if (!isAuthenticated) {
     return null;
@@ -451,6 +525,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Message Input */}
             <div className="p-4 border-t dark:border-gray-800">
+              {user && (chatMode === 'channel' ? (
+                selectedChannel && (
+                  <TypingIndicator
+                    channelId={selectedChannel._id}
+                    chatType="channel"
+                    currentUserId={user._id}
+                    className="mb-2"
+                  />
+                )
+              ) : (
+                selectedUser && (
+                  <TypingIndicator
+                    receiverId={selectedUser._id}
+                    chatType="direct"
+                    currentUserId={user._id}
+                    className="mb-2"
+                  />
+                )
+              ))}
               <form onSubmit={handleMessageSubmit} className="flex flex-col gap-2">
                 {attachmentId && (
                   <div className="px-2">
@@ -469,7 +562,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <input
                     type="text"
                     value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
+                    onChange={handleMessageInputChange}
                     placeholder={attachmentId ? "Add a message or send without one" : "Type a message..."}
                     className="flex-1 py-2 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-0"
                   />
