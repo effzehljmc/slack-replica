@@ -365,7 +365,12 @@ export default function AppLayout() {
           {/* Sidebar */}
           <div className="w-64 bg-gray-800 text-white flex flex-col">
             {/* Workspace Header */}
-            <div className="p-4 border-b border-gray-700">
+            <div className="p-4 border-b border-gray-700 flex items-center gap-3">
+              <img 
+                src="https://cdn.prod.website-files.com/671d0f620752c1fed9d57d14/672d13130d0b313e9e1fa956_mega-creator%20(11)-p-500.png"
+                alt="ChatGenius Logo"
+                className="h-8 w-8 object-contain"
+              />
               <h1 className="text-xl font-semibold">ChatGenius</h1>
             </div>
 
