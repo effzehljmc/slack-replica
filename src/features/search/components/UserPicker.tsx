@@ -14,6 +14,7 @@ import { useSearch } from '../context/search-context';
 import { useCurrentUser } from '@/features/auth/hooks/use-current-user';
 import { cn } from '@/lib/utils';
 import { UserStatusIndicator } from '@/features/chat/components/UserStatusIndicator';
+import { Id } from '@/convex/_generated/dataModel';
 
 export function UserPicker() {
   const { searchFilters, setSearchFilters } = useSearch();
@@ -28,10 +29,10 @@ export function UserPicker() {
 
   const selectedUser = users?.find(user => user._id === searchFilters.userId);
 
-  const handleUserSelect = (userId: string) => {
+  const handleUserSelect = (userId: Id<"users">) => {
     setSearchFilters({
       ...searchFilters,
-      userId: userId as any, // TODO: Fix type
+      userId,
     });
     setIsOpen(false);
   };

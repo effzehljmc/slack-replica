@@ -23,7 +23,6 @@ export default function RootLayout({
         <ConvexClientProvider>
           <AuthProvider>
             <ThemeProvider
-              attribute="class"
               defaultTheme="light"
               enableSystem
               disableTransitionOnChange

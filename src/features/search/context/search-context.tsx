@@ -12,6 +12,26 @@ interface SearchFilters {
   endDate?: number;
 }
 
+interface SearchResult {
+  _id: Id<"messages"> | Id<"direct_messages">;
+  type: 'channel_message' | 'direct_message';
+  content: string;
+  createdAt: number;
+  author: {
+    name: string;
+    email: string;
+  };
+  channel?: {
+    name: string;
+  };
+  recipient?: {
+    name: string;
+    email: string;
+  };
+  channelId?: Id<"channels">;
+  receiverId?: Id<"users">;
+}
+
 interface SearchContextType {
   isSearchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
@@ -19,7 +39,7 @@ interface SearchContextType {
   setSearchQuery: (query: string) => void;
   searchFilters: SearchFilters;
   setSearchFilters: (filters: SearchFilters) => void;
-  searchResults: any[] | undefined;
+  searchResults: SearchResult[] | undefined;
   isLoading: boolean;
   clearSearch: () => void;
 }

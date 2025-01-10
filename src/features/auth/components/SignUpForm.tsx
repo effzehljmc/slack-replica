@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ export function SignUpForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const signUp = useMutation(api.auth.signUp);
+  const signUp = useAction(api.auth.signUp);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

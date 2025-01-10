@@ -1,10 +1,11 @@
 'use client';
 
-import { FileText, Image, File, Download } from 'lucide-react';
+import { FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import Image from 'next/image';
 
 interface MessageAttachmentProps {
   fileName: string;
@@ -117,10 +118,11 @@ export function MessageAttachment({ fileName, fileType, storageId, fileSize }: M
         <div className="space-y-2">
           <div className="relative aspect-video bg-gray-100 dark:bg-gray-800 rounded overflow-hidden">
             {downloadUrl && (
-              <img 
+              <Image 
                 src={downloadUrl} 
                 alt={fileName} 
-                className="w-full h-full object-contain" 
+                fill
+                className="object-contain" 
                 loading="lazy"
                 onError={handleImageError}
               />

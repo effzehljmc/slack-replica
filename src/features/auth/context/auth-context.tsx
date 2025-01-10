@@ -1,8 +1,8 @@
 'use client';
 
-import { createContext, useContext, useCallback, useState } from 'react';
+import { createContext, useCallback, useState } from 'react';
 import type { User, AuthState } from '../types';
-import { useMutation, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 interface AuthContextType extends AuthState {
@@ -25,8 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     try {
-      const user = await signInAction({ email, password });
-      setUser(user);
+      const userData = await signInAction({ email, password });
+      setUser({
+        _id: userData._id,
+        id: userData._id,
+        email: userData.email,
+        name: userData.name,
+      });
       setIsAuthenticated(true);
       setToken(`email:${email}`);
     } catch (error) {
@@ -36,8 +41,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     try {
-      const user = await signUpAction({ email, password, name });
-      setUser(user);
+      const userData = await signUpAction({ email, password, name });
+      setUser({
+        _id: userData._id,
+        id: userData._id,
+        email: userData.email,
+        name: userData.name,
+      });
       setIsAuthenticated(true);
       setToken(`email:${email}`);
     } catch (error) {

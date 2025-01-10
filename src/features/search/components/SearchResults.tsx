@@ -11,7 +11,7 @@ function formatDate(date: Date | number | string) {
     const d = new Date(date);
     if (!isValid(d)) return 'No date';
     return format(d, 'MMM d, yyyy');
-  } catch (error) {
+  } catch {
     return 'No date';
   }
 }
@@ -22,7 +22,7 @@ function formatTime(date: Date | number | string) {
     const d = new Date(date);
     if (!isValid(d)) return 'No time';
     return format(d, 'h:mm a');
-  } catch (error) {
+  } catch {
     return 'No time';
   }
 }
@@ -75,7 +75,7 @@ export function SearchResults() {
         </div>
       ) : searchResults?.length === 0 ? (
         <div className="p-4 text-center text-gray-500">
-          No results found for "{searchQuery}"
+          No results found for &quot;{searchQuery}&quot;
           {hasFilters && ' with current filters'}
         </div>
       ) : (
@@ -111,12 +111,12 @@ export function SearchResults() {
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
                 {result.type === 'channel_message' ? (
                   <>
-                    <span>in #{result.channel.name}</span>
+                    <span>in #{result.channel?.name || 'Unknown channel'}</span>
                     <span>•</span>
                   </>
                 ) : (
                   <>
-                    <span>Direct Message with {result.recipient.name}</span>
+                    <span>Direct Message with {result.recipient?.name || 'Unknown user'}</span>
                     <span>•</span>
                   </>
                 )}

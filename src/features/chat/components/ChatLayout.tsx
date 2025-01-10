@@ -1,9 +1,5 @@
 'use client';
 
-import { useState } from "react";
-import { Message } from "../types";
-import { cn } from "@/lib/utils";
-
 interface ChatLayoutProps {
   children: React.ReactNode;
 }

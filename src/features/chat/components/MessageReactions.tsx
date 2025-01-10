@@ -39,7 +39,7 @@ export function MessageReactions({ targetId, targetType }: MessageReactionsProps
 
   if (!user?._id) return null;
 
-  const handleReactionClick = async (code: string, emoji: string) => {
+  const handleReactionClick = async (code: string) => {
     const hasReacted = reactions?.[code]?.users.includes(user._id);
     
     if (hasReacted) {
@@ -71,7 +71,7 @@ export function MessageReactions({ targetId, targetType }: MessageReactionsProps
             "h-6 px-2 py-1 hover:bg-gray-100",
             data.users.includes(user._id) && "bg-gray-100"
           )}
-          onClick={() => handleReactionClick(code, data.emoji)}
+          onClick={() => handleReactionClick(code)}
         >
           <span className="mr-1">{data.emoji}</span>
           <span className="text-xs">{data.count}</span>
@@ -94,7 +94,7 @@ export function MessageReactions({ targetId, targetType }: MessageReactionsProps
               <button
                 key={code}
                 className="hover:bg-gray-100 p-1 rounded"
-                onClick={() => handleReactionClick(code, emoji)}
+                onClick={() => handleReactionClick(code)}
               >
                 {emoji}
               </button>

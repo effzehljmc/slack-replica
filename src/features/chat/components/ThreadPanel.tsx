@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { Message, ChannelMessage, isChannelMessage } from "../types";
+import { Message, isChannelMessage } from "../types";
 import { ThreadMessageList } from "./ThreadMessageList";
 import { ThreadMessageInput } from "./ThreadMessageInput";
 import { cn } from "@/lib/utils";
@@ -16,15 +16,18 @@ interface ThreadPanelProps {
 }
 
 export function ThreadPanel({ isOpen, originalMessage, onClose }: ThreadPanelProps) {
+  // Get real-time reply count - moved before conditional return
+  const replies = useQuery(
+    api.messages.listThreadMessages,
+    originalMessage && isChannelMessage(originalMessage)
+      ? { threadId: originalMessage._id }
+      : "skip"
+  );
+  const replyCount = replies?.length ?? 0;
+
   if (!originalMessage || !isChannelMessage(originalMessage)) return null;
 
   const timestamp = originalMessage.timestamp || originalMessage.createdAt || Date.now();
-  
-  // Get real-time reply count
-  const replies = useQuery(api.messages.listThreadMessages, { 
-    threadId: originalMessage._id 
-  });
-  const replyCount = replies?.length ?? 0;
 
   return (
     <div

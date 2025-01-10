@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/popover';
 import { useSearch } from '../context/search-context';
 import { cn } from '@/lib/utils';
+import { Id } from '@/convex/_generated/dataModel';
 
 export function ChannelPicker() {
   const { searchFilters, setSearchFilters } = useSearch();
@@ -22,10 +23,10 @@ export function ChannelPicker() {
 
   const selectedChannel = channels?.find(channel => channel._id === searchFilters.channelId);
 
-  const handleChannelSelect = (channelId: string) => {
+  const handleChannelSelect = (channelId: Id<"channels">) => {
     setSearchFilters({
       ...searchFilters,
-      channelId: channelId as any, // TODO: Fix type
+      channelId,
     });
     setIsOpen(false);
   };

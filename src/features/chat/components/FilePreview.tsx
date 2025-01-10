@@ -1,9 +1,10 @@
 'use client';
 
-import { FileText, Image, File } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import Image from 'next/image';
 
 interface FilePreviewProps {
   attachmentId: Id<"attachments">;
@@ -23,12 +24,15 @@ export function FilePreview({ attachmentId }: FilePreviewProps) {
   return (
     <div className="rounded-lg border p-2 max-w-xs">
       {isImage ? (
-        <img 
-          src={fileUrl} 
-          alt={fileName} 
-          className="max-w-full h-auto rounded" 
-          loading="lazy"
-        />
+        <div className="relative w-full h-48">
+          <Image 
+            src={fileUrl} 
+            alt={fileName} 
+            fill
+            className="object-contain rounded" 
+            loading="lazy"
+          />
+        </div>
       ) : (
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-gray-500" />

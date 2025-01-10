@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
@@ -10,7 +10,7 @@ import { useCurrentUser } from '@/features/auth/hooks/use-current-user';
 import { Id } from '@/convex/_generated/dataModel';
 import { ChatLayout } from '@/features/chat/components/ChatLayout';
 import { MessageItem } from '@/features/chat/components/MessageItem';
-import { Message, ChannelMessage, DirectMessage, isChannelMessage } from '@/features/chat/types';
+import { Message, isChannelMessage, isDirectMessage } from '@/features/chat/types';
 import { ThreadPanel } from '@/features/chat/components/ThreadPanel';
 import { useActivityStatus } from '@/features/chat/hooks/use-activity-status';
 import { UserStatusIndicator } from "@/features/chat/components/UserStatusIndicator";
@@ -34,16 +34,20 @@ interface DirectMessageUser {
 
 type ChatMode = 'channel' | 'direct';
 
-interface NavigateToMessageEvent extends CustomEvent {
-  detail: {
-    type: 'channel' | 'direct';
-    channelId?: Id<"channels">;
-    userId?: Id<"users">;
-    messageId: Id<"messages"> | Id<"direct_messages">;
-  };
+type NavigateToMessageEventDetail = {
+  type: 'channel' | 'direct';
+  channelId?: Id<"channels">;
+  userId?: Id<"users">;
+  messageId: Id<"messages"> | Id<"direct_messages">;
+};
+
+declare global {
+  interface WindowEventMap {
+    'navigate-to-message': CustomEvent<NavigateToMessageEventDetail>;
+  }
 }
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [showChannelInput, setShowChannelInput] = useState(false);
@@ -62,6 +66,37 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const removeTypingStatus = useMutation(api.typing.removeTypingStatus);
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
+  // Get the current user
+  const { data: user } = useCurrentUser();
+
+  // Fetch channels and users data
+  const channelsQuery = useQuery(api.channels.listChannels);
+  const usersQuery = useQuery(
+    api.users.listUsers,
+    user?._id ? { currentUserId: user._id } : "skip"
+  );
+
+  // Memoize channels and users lists
+  const channels = useMemo(() => channelsQuery || [], [channelsQuery]);
+  const users = useMemo(() => usersQuery || [], [usersQuery]);
+
+  // Memoize the event handler functions
+  const handleChannelSelect = useCallback((channel: Channel) => {
+    setSelectedChannel(channel);
+    setSelectedUser(null);
+    setChatMode('channel');
+    setIsThreadOpen(false);
+    setSelectedMessage(null);
+  }, []);
+
+  const handleUserSelect = useCallback((selectedUser: DirectMessageUser) => {
+    setSelectedUser(selectedUser);
+    setSelectedChannel(null);
+    setChatMode('direct');
+    setIsThreadOpen(false);
+    setSelectedMessage(null);
+  }, []);
+
   // Add activity status tracking
   useActivityStatus();
 
@@ -69,32 +104,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Get the current user
-  const { data: user } = useCurrentUser();
-
-  // Fetch the current channels
-  const channels = useQuery(api.channels.listChannels) || [];
-  
-  // Fetch all users except current user
-  const users = useQuery(
-    api.users.listUsers,
-    user?._id ? { currentUserId: user._id } : "skip"
-  ) || [];
-
   // Fetch messages based on mode
   const channelMessages = useQuery(
     api.messages.getMessages,
     selectedChannel && chatMode === 'channel' ? { channelId: selectedChannel._id } : "skip"
-  ) || [];
-
+  );
+  
   const directMessages = useQuery(
     api.direct_messages.getDirectMessages,
     selectedUser && chatMode === 'direct' && user?._id
       ? { userId1: user._id, userId2: selectedUser._id }
       : "skip"
-  ) || [];
+  );
 
-  const messages = chatMode === 'channel' ? channelMessages : directMessages;
+  // Use type inference from the query results and map them to the correct types
+  const messages = useMemo(() => {
+    if (chatMode === 'channel' && channelMessages) {
+      return channelMessages.map(msg => ({
+        ...msg,
+        _id: msg._id,
+        authorId: msg.authorId,
+        channelId: msg.channelId,
+        author: msg.author || { name: '', email: '' },
+        createdAt: msg._creationTime,
+      }));
+    } else if (chatMode === 'direct' && directMessages) {
+      return directMessages.map(msg => ({
+        ...msg,
+        _id: msg._id,
+        authorId: msg.senderId,
+        author: msg.author || { name: '', email: '' },
+        createdAt: msg._creationTime,
+      }));
+    }
+    return [];
+  }, [chatMode, channelMessages, directMessages]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -105,7 +149,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const createChannel = useMutation(api.channels.createChannel);
   const sendChannelMessage = useMutation(api.messages.sendMessage);
   const sendDirectMessage = useMutation(api.direct_messages.sendDirectMessage);
-  const updateStatus = useMutation(api.users.updateStatus);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -115,57 +158,71 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Handle navigation from search results
   useEffect(() => {
-    const handleNavigateToMessage = (event: Event) => {
-      const { type, channelId, userId, messageId } = (event as NavigateToMessageEvent).detail;
+    function handleEvent(event: Event): void {
+      if (!(event instanceof CustomEvent)) return;
+      
+      const detail = event.detail;
+      if (
+        detail &&
+        typeof detail === 'object' &&
+        'type' in detail &&
+        typeof detail.type === 'string' &&
+        (detail.type === 'channel' || detail.type === 'direct') &&
+        ('channelId' in detail || 'userId' in detail) &&
+        'messageId' in detail
+      ) {
+        const typedDetail = detail as NavigateToMessageEventDetail;
+        const { type, channelId, userId, messageId } = typedDetail;
 
-      if (type === 'channel' && channelId) {
-        // Switch to channel
-        const channel = channels.find(c => c._id === channelId);
-        if (channel) {
-          handleChannelSelect(channel);
-          // Scroll to message after messages are loaded
-          const checkAndScrollToMessage = () => {
-            const messageElement = document.getElementById(`message-${messageId}`);
-            if (messageElement) {
-              messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              messageElement.classList.add('bg-yellow-100', 'dark:bg-yellow-900/30');
-              setTimeout(() => {
-                messageElement.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
-              }, 2000);
-            } else {
-              // Try again in 100ms if message not found (messages might still be loading)
-              setTimeout(checkAndScrollToMessage, 100);
-            }
-          };
-          setTimeout(checkAndScrollToMessage, 100);
-        }
-      } else if (type === 'direct' && userId) {
-        // Switch to DM
-        const user = users.find(u => u._id === userId);
-        if (user) {
-          handleUserSelect(user);
-          // Scroll to message after messages are loaded
-          const checkAndScrollToMessage = () => {
-            const messageElement = document.getElementById(`message-${messageId}`);
-            if (messageElement) {
-              messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              messageElement.classList.add('bg-yellow-100', 'dark:bg-yellow-900/30');
-              setTimeout(() => {
-                messageElement.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
-              }, 2000);
-            } else {
-              // Try again in 100ms if message not found (messages might still be loading)
-              setTimeout(checkAndScrollToMessage, 100);
-            }
-          };
-          setTimeout(checkAndScrollToMessage, 100);
+        if (type === 'channel' && channelId) {
+          // Switch to channel
+          const channel = channels.find(c => c._id === channelId);
+          if (channel) {
+            handleChannelSelect(channel);
+            // Scroll to message after messages are loaded
+            const checkAndScrollToMessage = () => {
+              const messageElement = document.getElementById(`message-${messageId}`);
+              if (messageElement) {
+                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                messageElement.classList.add('bg-yellow-100', 'dark:bg-yellow-900/30');
+                setTimeout(() => {
+                  messageElement.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
+                }, 2000);
+              } else {
+                // Try again in 100ms if message not found (messages might still be loading)
+                setTimeout(checkAndScrollToMessage, 100);
+              }
+            };
+            setTimeout(checkAndScrollToMessage, 100);
+          }
+        } else if (type === 'direct' && userId) {
+          // Switch to DM
+          const user = users.find(u => u._id === userId);
+          if (user) {
+            handleUserSelect(user);
+            // Scroll to message after messages are loaded
+            const checkAndScrollToMessage = () => {
+              const messageElement = document.getElementById(`message-${messageId}`);
+              if (messageElement) {
+                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                messageElement.classList.add('bg-yellow-100', 'dark:bg-yellow-900/30');
+                setTimeout(() => {
+                  messageElement.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
+                }, 2000);
+              } else {
+                // Try again in 100ms if message not found (messages might still be loading)
+                setTimeout(checkAndScrollToMessage, 100);
+              }
+            };
+            setTimeout(checkAndScrollToMessage, 100);
+          }
         }
       }
-    };
+    }
 
-    window.addEventListener('navigate-to-message', handleNavigateToMessage);
-    return () => window.removeEventListener('navigate-to-message', handleNavigateToMessage);
-  }, [channels, users]);
+    window.addEventListener('navigate-to-message', handleEvent);
+    return () => window.removeEventListener('navigate-to-message', handleEvent);
+  }, [channels, users, handleChannelSelect, handleUserSelect]);
 
   const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessageInput(e.target.value);
@@ -241,31 +298,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  async function handleChannelSubmit(e: React.FormEvent) {
+  function handleChannelSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!channelName.trim() || !user?._id) return;
-    await createChannel({ 
+    createChannel({ 
       name: channelName.trim(),
       createdBy: user._id
     });
     setChannelName('');
     setShowChannelInput(false);
-  }
-
-  function handleChannelSelect(channel: Channel) {
-    setSelectedChannel(channel);
-    setSelectedUser(null);
-    setChatMode('channel');
-    setIsThreadOpen(false);
-    setSelectedMessage(null);
-  }
-
-  function handleUserSelect(selectedUser: DirectMessageUser) {
-    setSelectedUser(selectedUser);
-    setSelectedChannel(null);
-    setChatMode('direct');
-    setIsThreadOpen(false);
-    setSelectedMessage(null);
   }
 
   const handleThreadOpen = (message: Message) => {
@@ -280,7 +321,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setSelectedMessage(null);
   };
 
-  async function handleMessageSubmit(e: React.FormEvent) {
+  const handleMessageSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!messageInput.trim() && !attachmentId) return;
     if (!user?._id) return;
@@ -305,17 +346,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setMessageInput('');
       setAttachmentId(null);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      let errorMessage: string;
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else {
+        errorMessage = 'An unknown error occurred';
+      }
+      console.error('Failed to send message:', errorMessage);
     }
-  }
-
-  function formatTime(timestamp: number) {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  }
+  };
 
   return (
     <SearchProvider>
@@ -462,63 +503,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((msg: any) => {
-                // For direct messages
-                if (chatMode === 'direct') {
-                  const message: DirectMessage = {
-                    _id: msg._id,
-                    content: msg.content,
-                    authorId: msg.senderId,
-                    author: {
-                      name: msg.author?.name || '',
-                      email: msg.author?.email || '',
-                    },
-                    timestamp: undefined,
-                    createdAt: msg.createdAt,
-                    senderId: msg.senderId,
-                    receiverId: msg.receiverId,
-                    attachmentId: msg.attachmentId,
-                    attachment: msg.attachment,
-                    isEdited: msg.isEdited,
-                    editedAt: msg.editedAt,
-                  };
+              {messages.map((msg) => {
+                if (chatMode === 'direct' && isDirectMessage(msg)) {
                   return (
                     <MessageItem
                       key={msg._id}
-                      message={message}
+                      message={msg}
+                      isThreadReply={false}
+                      onThreadClick={handleThreadOpen}
                       currentUserId={user!._id}
                     />
                   );
                 }
-                
-                // For channel messages
-                const message: ChannelMessage = {
-                  _id: msg._id,
-                  content: msg.content,
-                  authorId: msg.authorId,
-                  author: {
-                    name: msg.author?.name || '',
-                    email: msg.author?.email || '',
-                  },
-                  channelId: msg.channelId,
-                  timestamp: msg.timestamp,
-                  createdAt: msg.createdAt,
-                  threadId: msg.threadId,
-                  hasThreadReplies: msg.hasThreadReplies,
-                  replyCount: msg.replyCount,
-                  attachmentId: msg.attachmentId,
-                  attachment: msg.attachment,
-                  isEdited: msg.isEdited,
-                  editedAt: msg.editedAt,
-                };
-                return (
-                  <MessageItem
-                    key={msg._id}
-                    message={message}
-                    onThreadClick={handleThreadOpen}
-                    currentUserId={user!._id}
-                  />
-                );
+
+                if (chatMode === 'channel' && isChannelMessage(msg)) {
+                  return (
+                    <MessageItem
+                      key={msg._id}
+                      message={msg}
+                      isThreadReply={false}
+                      onThreadClick={handleThreadOpen}
+                      currentUserId={user!._id}
+                    />
+                  );
+                }
+
+                return null;
               })}
               <div ref={messagesEndRef} />
             </div>
