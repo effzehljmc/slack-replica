@@ -19,6 +19,7 @@ import { SearchContainer } from '@/features/search/components/SearchContainer';
 import { FileUpload } from '@/features/chat/components/FileUpload';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { TypingIndicator } from "@/features/chat/components/TypingIndicator";
+import { WelcomeScreen } from '@/features/chat/components/WelcomeScreen';
 
 interface Channel {
   _id: Id<"channels">;
@@ -496,7 +497,7 @@ export default function AppLayout() {
                     ? `# ${selectedChannel.name}`
                     : chatMode === 'direct' && selectedUser
                     ? selectedUser.name || selectedUser.email
-                    : 'Select a conversation'}
+                    : 'Welcome to ChatGenius'}
                 </h2>
                 <SearchContainer />
               </div>
@@ -506,91 +507,123 @@ export default function AppLayout() {
               </div>
             </header>
 
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((msg) => {
-                if (chatMode === 'direct' && isDirectMessage(msg)) {
-                  return (
-                    <MessageItem
-                      key={msg._id}
-                      message={msg}
-                      isThreadReply={false}
-                      onThreadClick={handleThreadOpen}
-                      currentUserId={user!._id}
-                    />
-                  );
-                }
+            {/* Messages Area or Welcome Screen */}
+            {selectedChannel || selectedUser ? (
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {messages.map((msg) => {
+                  if (chatMode === 'direct' && isDirectMessage(msg)) {
+                    return (
+                      <MessageItem
+                        key={msg._id}
+                        message={msg}
+                        isThreadReply={false}
+                        onThreadClick={handleThreadOpen}
+                        currentUserId={user!._id}
+                      />
+                    );
+                  }
 
-                if (chatMode === 'channel' && isChannelMessage(msg)) {
-                  return (
-                    <MessageItem
-                      key={msg._id}
-                      message={msg}
-                      isThreadReply={false}
-                      onThreadClick={handleThreadOpen}
-                      currentUserId={user!._id}
-                    />
-                  );
-                }
+                  if (chatMode === 'channel' && isChannelMessage(msg)) {
+                    return (
+                      <MessageItem
+                        key={msg._id}
+                        message={msg}
+                        isThreadReply={false}
+                        onThreadClick={handleThreadOpen}
+                        currentUserId={user!._id}
+                      />
+                    );
+                  }
 
-                return null;
-              })}
-              <div ref={messagesEndRef} />
-            </div>
+                  return null;
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+            ) : (
+              <WelcomeScreen
+                onJoinGeneral={() => {
+                  const generalChannel = channels.find(c => c.name === 'general');
+                  if (generalChannel) {
+                    handleChannelSelect(generalChannel);
+                  } else if (user?._id) {
+                    createChannel({ 
+                      name: 'general',
+                      createdBy: user._id
+                    });
+                    // The channels list will update automatically through Convex's real-time updates
+                  }
+                }}
+                onCreateChannel={() => setShowChannelInput(true)}
+                onSelectUser={(userId) => {
+                  const selectedUser = users.find(u => u._id === userId);
+                  if (selectedUser) {
+                    handleUserSelect(selectedUser);
+                  }
+                }}
+                onlineUsers={users
+                  .filter(u => u.status === 'online' && u._id !== user?._id)
+                  .map(u => ({
+                    id: u._id,
+                    name: u.name || u.email
+                  }))}
+              />
+            )}
 
             {/* Message Input */}
-            <div className="p-4 border-t dark:border-gray-800">
-              {user && (chatMode === 'channel' ? (
-                selectedChannel && (
-                  <TypingIndicator
-                    channelId={selectedChannel._id}
-                    chatType="channel"
-                    currentUserId={user._id}
-                    className="mb-2"
-                  />
-                )
-              ) : (
-                selectedUser && (
-                  <TypingIndicator
-                    receiverId={selectedUser._id}
-                    chatType="direct"
-                    currentUserId={user._id}
-                    className="mb-2"
-                  />
-                )
-              ))}
-              <form onSubmit={handleMessageSubmit} className="flex flex-col gap-2">
-                {attachmentId && (
-                  <div className="px-2">
-                    <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
-                      File attached
-                    </span>
+            {(selectedChannel || selectedUser) && (
+              <div className="p-4 border-t dark:border-gray-800">
+                {user && (chatMode === 'channel' ? (
+                  selectedChannel && (
+                    <TypingIndicator
+                      channelId={selectedChannel._id}
+                      chatType="channel"
+                      currentUserId={user._id}
+                      className="mb-2"
+                    />
+                  )
+                ) : (
+                  selectedUser && (
+                    <TypingIndicator
+                      receiverId={selectedUser._id}
+                      chatType="direct"
+                      currentUserId={user._id}
+                      className="mb-2"
+                    />
+                  )
+                ))}
+                <form onSubmit={handleMessageSubmit} className="flex flex-col gap-2">
+                  {attachmentId && (
+                    <div className="px-2">
+                      <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        File attached
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 rounded-md border dark:border-gray-700 bg-white dark:bg-gray-800 px-3">
+                    <input
+                      type="text"
+                      value={messageInput}
+                      onChange={handleMessageInputChange}
+                      placeholder={attachmentId ? "Add a message or send without one" : "Type a message..."}
+                      className="flex-1 py-2 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-0"
+                    />
+                    <FileUpload
+                      channelId={chatMode === 'channel' ? selectedChannel?._id : undefined}
+                      onUploadComplete={(id) => setAttachmentId(id as Id<"attachments">)}
+                      compact
+                    />
                   </div>
-                )}
-                <div className="flex items-center gap-2 rounded-md border dark:border-gray-700 bg-white dark:bg-gray-800 px-3">
-                  <input
-                    type="text"
-                    value={messageInput}
-                    onChange={handleMessageInputChange}
-                    placeholder={attachmentId ? "Add a message or send without one" : "Type a message..."}
-                    className="flex-1 py-2 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-0"
-                  />
-                  <FileUpload
-                    channelId={chatMode === 'channel' ? selectedChannel?._id : undefined}
-                    onUploadComplete={(id) => setAttachmentId(id as Id<"attachments">)}
-                    compact
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={!messageInput.trim() && !attachmentId}
-                >
-                  Send
-                </button>
-              </form>
-            </div>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={!messageInput.trim() && !attachmentId}
+                  >
+                    Send
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
 
           {/* Thread Panel */}

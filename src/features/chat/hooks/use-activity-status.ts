@@ -5,12 +5,14 @@ import { useCurrentUser } from '@/features/auth/hooks/use-current-user';
 
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 const UPDATE_THROTTLE = 2000; // Only update every 2 seconds
+const ACTIVITY_BUFFER = 30000; // 30 seconds buffer before marking as away
 
 export function useActivityStatus() {
   const { data: user } = useCurrentUser();
   const updateStatus = useMutation(api.users.updateStatus);
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const lastUpdateRef = useRef<number>(0);
+  const lastActivityRef = useRef<number>(Date.now());
   const pendingStatusRef = useRef<string | null>(null);
   const unmountingRef = useRef(false);
   
@@ -30,6 +32,14 @@ export function useActivityStatus() {
     if (timeSinceLastUpdate < UPDATE_THROTTLE) {
       pendingStatusRef.current = newStatus;
       return;
+    }
+
+    // For 'away' status, ensure enough time has passed since last activity
+    if (newStatus === 'away') {
+      const timeSinceLastActivity = now - lastActivityRef.current;
+      if (timeSinceLastActivity < ACTIVITY_BUFFER) {
+        return;
+      }
     }
 
     try {
@@ -55,16 +65,23 @@ export function useActivityStatus() {
   }, [setStatus]);
 
   const resetTimer = useCallback(() => {
+    const now = Date.now();
+    lastActivityRef.current = now;
+
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
-    if (currentStatus !== 'online') {
+    // Only update to online if we were away and enough time has passed since last update
+    if (currentStatus !== 'online' && (now - lastUpdateRef.current) >= UPDATE_THROTTLE) {
       setStatus('online');
     }
     
     timeoutRef.current = setTimeout(() => {
-      setStatus('away');
+      const timeSinceLastActivity = Date.now() - lastActivityRef.current;
+      if (timeSinceLastActivity >= ACTIVITY_BUFFER) {
+        setStatus('away');
+      }
     }, INACTIVITY_TIMEOUT);
   }, [setStatus, currentStatus]);
 
