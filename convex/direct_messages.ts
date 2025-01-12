@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 // Send a direct message
 export const sendDirectMessage = mutation({
@@ -11,22 +12,41 @@ export const sendDirectMessage = mutation({
     attachmentId: v.optional(v.id("attachments")),
   },
   handler: async (ctx, { content, senderId, receiverId, attachmentId }) => {
-    const messageId = await ctx.db.insert("direct_messages", {
-      content,
-      senderId,
-      receiverId,
-      attachmentId,
-      createdAt: Date.now(),
-    });
+    try {
+      // Check if message mentions an avatar
+      const hasAvatarMention = content.match(/@[a-zA-Z0-9]+\'s\s*avatar/i) !== null;
 
-    // If there's an attachment, update it with the message ID
-    if (attachmentId) {
-      await ctx.db.patch(attachmentId, {
-        messageId,
+      const messageId = await ctx.db.insert("direct_messages", {
+        content,
+        senderId,
+        receiverId,
+        attachmentId,
+        createdAt: Date.now(),
+        isAvatarMentioned: hasAvatarMention,
       });
-    }
 
-    return messageId;
+      // Queue embedding update as a background job
+      await ctx.scheduler.runAfter(0, internal.rag.updateMessageEmbedding, {
+        messageId,
+        messageType: "direct_message",
+        content,
+      });
+
+      // Check for avatar mentions and handle them
+      if (hasAvatarMention) {
+        await ctx.scheduler.runAfter(0, internal.rag.handleAvatarMention, {
+          messageId,
+          content,
+          authorId: senderId,
+          receiverId,
+          messageType: "direct_message",
+        });
+      }
+
+      return messageId;
+    } catch (error) {
+      throw error;
+    }
   },
 });
 
@@ -37,60 +57,38 @@ export const getDirectMessages = query({
     userId2: v.id("users"),
   },
   handler: async (ctx, { userId1, userId2 }) => {
-    // Get messages in both directions
-    const sentMessages = await ctx.db
+    // Query messages in both directions using the by_participants index
+    const messages1 = await ctx.db
       .query("direct_messages")
       .withIndex("by_participants", (q) => 
         q.eq("senderId", userId1).eq("receiverId", userId2)
       )
       .collect();
 
-    const receivedMessages = await ctx.db
+    const messages2 = await ctx.db
       .query("direct_messages")
-      .withIndex("by_participants_reverse", (q) => 
-        q.eq("receiverId", userId1).eq("senderId", userId2)
+      .withIndex("by_participants", (q) => 
+        q.eq("senderId", userId2).eq("receiverId", userId1)
       )
       .collect();
 
-    // Combine and sort messages chronologically (oldest first)
-    const allMessages = [...sentMessages, ...receivedMessages]
-      .sort((a, b) => a.createdAt - b.createdAt);
-
-    // Get user details for both participants
-    const [user1, user2] = await Promise.all([
-      ctx.db.get(userId1),
-      ctx.db.get(userId2),
-    ]);
-
-    // Create a map of user IDs to user data
-    const userMap = new Map([
-      [userId1, user1],
-      [userId2, user2],
-    ]);
-
-    // Get all attachment IDs
-    const attachmentIds = allMessages
-      .map(msg => msg.attachmentId)
-      .filter((id): id is Id<"attachments"> => id !== undefined);
-
-    // Fetch all attachments in one query if there are any attachments
-    const attachments = attachmentIds.length > 0 
-      ? await Promise.all(attachmentIds.map(id => ctx.db.get(id)))
-      : [];
-
-    // Create a map of attachment IDs to attachment data
-    const attachmentMap = new Map(
-      attachments
-        .filter((attachment): attachment is NonNullable<typeof attachment> => attachment !== null)
-        .map(attachment => [attachment._id, attachment])
+    // Combine and sort messages by creation time
+    const allMessages = [...messages1, ...messages2].sort(
+      (a, b) => a.createdAt - b.createdAt
     );
 
-    // Add user data and attachments to messages
-    return allMessages.map(message => ({
-      ...message,
-      author: userMap.get(message.senderId) || { name: 'Deleted User', email: '' },
-      attachment: message.attachmentId ? attachmentMap.get(message.attachmentId) : undefined,
-    }));
+    // Fetch author information for each message
+    const messagesWithAuthors = await Promise.all(
+      allMessages.map(async (message) => {
+        const author = await ctx.db.get(message.senderId);
+        return {
+          ...message,
+          author: author ? { name: author.name, email: author.email } : null,
+        };
+      })
+    );
+
+    return messagesWithAuthors;
   },
 });
 

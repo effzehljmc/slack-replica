@@ -8,11 +8,14 @@ import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { UserStatusIndicator } from "@/features/chat/components/UserStatusIndicator";
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export function UserButton() {
   const { data: user, isLoading } = useCurrentUser();
   const { signOut } = useAuth();
   const updateStatus = useMutation(api.users.updateStatus);
+  const router = useRouter();
   
   // Get real-time status updates
   const status = useQuery(
@@ -40,6 +43,10 @@ export function UserButton() {
     await updateStatus({ userId: user._id, status: newStatus });
   };
 
+  const handleAIAvatarClick = () => {
+    router.push('/app/settings/ai-avatar');
+  };
+
   const trigger = (
     <button className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
       <div className="relative">
@@ -60,6 +67,11 @@ export function UserButton() {
       <DropdownMenuItem onClick={toggleStatus}>
         {status === 'away' ? 'Set as Online' : 'Set as Away'}
       </DropdownMenuItem>
+      <Link href="/app/settings/ai-avatar" className="block">
+        <DropdownMenuItem onClick={handleAIAvatarClick}>
+          AI Avatar Settings
+        </DropdownMenuItem>
+      </Link>
       <DropdownMenuItem onClick={signOut}>
         Log Out
       </DropdownMenuItem>

@@ -130,19 +130,13 @@ export function useActivityStatus() {
     };
 
     // Set initial status with delay if offline
-    console.log("Current status on load:", currentStatus);
     if (currentStatus === 'offline') {
-      console.log("Currently offline, will set online after delay");
       const timer = setTimeout(() => {
-        console.log("Setting delayed online status");
         setStatus('online');
       }, 2000);
       return () => clearTimeout(timer);
     } else if (!currentStatus) {
-      console.log("No status set, setting to online");
       setStatus('online');
-    } else {
-      console.log("Status already set to:", currentStatus);
     }
 
     // Add event listeners

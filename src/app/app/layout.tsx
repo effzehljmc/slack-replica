@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { api } from '@/convex/_generated/api';
@@ -48,7 +48,19 @@ declare global {
   }
 }
 
-export default function AppLayout() {
+export default function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const isSettingsPage = pathname?.startsWith('/app/settings');
+
+  // If it's a settings page, just render the children
+  if (isSettingsPage) {
+    return children;
+  }
+
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [showChannelInput, setShowChannelInput] = useState(false);
@@ -329,6 +341,13 @@ export default function AppLayout() {
 
     try {
       if (chatMode === 'channel' && selectedChannel) {
+        console.log('[Client] Sending channel message', {
+          content: messageInput.trim(),
+          channelId: selectedChannel._id.toString(),
+          authorId: user._id.toString(),
+          hasAttachment: !!attachmentId
+        });
+        
         await sendChannelMessage({
           content: messageInput.trim(),
           channelId: selectedChannel._id,
@@ -336,11 +355,22 @@ export default function AppLayout() {
           attachmentId: attachmentId || undefined,
         });
       } else if (chatMode === 'direct' && selectedUser) {
-        await sendDirectMessage({
+        console.log('[Client] Sending direct message', {
+          content: messageInput.trim(),
+          senderId: user._id.toString(),
+          receiverId: selectedUser._id.toString(),
+          hasAttachment: !!attachmentId
+        });
+        
+        const messageId = await sendDirectMessage({
           content: messageInput.trim(),
           senderId: user._id,
           receiverId: selectedUser._id,
           attachmentId: attachmentId || undefined,
+        });
+
+        console.log('[Client] Direct message sent', {
+          messageId: messageId.toString()
         });
       }
       
@@ -355,7 +385,32 @@ export default function AppLayout() {
       } else {
         errorMessage = 'An unknown error occurred';
       }
-      console.error('Failed to send message:', errorMessage);
+      console.error('[Client] Failed to send message:', errorMessage);
+    }
+  };
+
+  const handleDirectMessageSubmit = async (content: string) => {
+    if (!selectedUser || !user) return;
+
+    console.log("[Client] Sending direct message", {
+      content,
+      senderId: user._id,
+      receiverId: selectedUser._id,
+      hasAttachment: !!attachmentId
+    });
+
+    try {
+      const messageId = await sendDirectMessage({
+        content,
+        senderId: user._id,
+        receiverId: selectedUser._id,
+        attachmentId: attachmentId || undefined,
+      });
+
+      console.log("[Client] Direct message sent successfully", { messageId });
+      setAttachmentId(null);
+    } catch (error) {
+      console.error("[Client] Error sending direct message:", error);
     }
   };
 

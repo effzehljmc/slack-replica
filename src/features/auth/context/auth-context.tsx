@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useState } from 'react';
+import { createContext, useCallback, useState, useEffect } from 'react';
 import type { User, AuthState } from '../types';
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -16,9 +16,29 @@ export type { AuthContextType };
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('user');
+      const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+      return parsedUser;
+    }
+    return null;
+  });
+  
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const authState = localStorage.getItem('isAuthenticated') === 'true';
+      return authState;
+    }
+    return false;
+  });
+  
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('token');
+    }
+    return null;
+  });
 
   const signInAction = useAction(api.auth.signIn);
   const signUpAction = useAction(api.auth.signUp);
@@ -26,14 +46,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     try {
       const userData = await signInAction({ email, password });
-      setUser({
+      const newUser = {
         _id: userData._id,
         id: userData._id,
         email: userData.email,
         name: userData.name,
-      });
+      };
+      setUser(newUser);
       setIsAuthenticated(true);
-      setToken(`email:${email}`);
+      const newToken = `email:${email}`;
+      setToken(newToken);
+      
+      // Save to localStorage
+      localStorage.setItem('user', JSON.stringify(newUser));
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('token', newToken);
     } catch (error) {
       throw error;
     }
@@ -56,14 +83,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [signUpAction]);
 
   const signOut = useCallback(async () => {
-    try {
-      // TODO: Implement actual sign out
-      setUser(null);
-      setIsAuthenticated(false);
-      setToken(null);
-    } catch (error) {
-      throw error;
-    }
+    setUser(null);
+    setIsAuthenticated(false);
+    setToken(null);
+    
+    // Clear localStorage
+    localStorage.removeItem('user');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('token');
   }, []);
 
   return (

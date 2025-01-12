@@ -14,6 +14,8 @@ export default defineSchema({
     isEdited: v.optional(v.boolean()),
     editedAt: v.optional(v.number()),
     attachmentId: v.optional(v.id("attachments")),
+    isAvatarMessage: v.optional(v.boolean()),
+    replyToId: v.optional(v.id("messages")),
   })
     .index("by_thread", ["threadId"])
     .index("by_channel", ["channelId"])
@@ -55,6 +57,9 @@ export default defineSchema({
     tokenIdentifier: v.string(),
     status: v.optional(v.union(v.literal("online"), v.literal("offline"), v.literal("away"))),
     lastSeenAt: v.optional(v.number()),
+    autoAvatarEnabled: v.optional(v.boolean()),
+    avatarStyle: v.optional(v.string()),
+    avatarTraits: v.optional(v.array(v.string())),
   })
     .index("by_email", ["email"]),
 
@@ -63,15 +68,16 @@ export default defineSchema({
     senderId: v.id("users"),
     receiverId: v.id("users"),
     createdAt: v.number(),
+    attachmentId: v.optional(v.id("attachments")),
     isEdited: v.optional(v.boolean()),
     editedAt: v.optional(v.number()),
-    attachmentId: v.optional(v.id("attachments")),
+    isAvatarMessage: v.optional(v.boolean()),
+    replyToId: v.optional(v.id("direct_messages")),
+    isAvatarMentioned: v.optional(v.boolean()),
   })
-    .index("by_participants", ["senderId", "receiverId"])
-    .index("by_participants_reverse", ["receiverId", "senderId"])
     .index("by_sender", ["senderId"])
     .index("by_receiver", ["receiverId"])
-    .index("by_creation", ["createdAt"]),
+    .index("by_participants", ["senderId", "receiverId"]),
 
   attachments: defineTable({
     fileName: v.string(),
@@ -83,4 +89,22 @@ export default defineSchema({
     channelId: v.optional(v.id("channels")),
     createdAt: v.number(),
   }),
+
+  embeddings: defineTable({
+    messageId: v.optional(v.id("messages")),
+    directMessageId: v.optional(v.id("direct_messages")),
+    userId: v.id("users"),
+    channelId: v.optional(v.id("channels")),
+    embedding: v.array(v.float64()), // Store as array of float64 for OpenAI's text-embedding-ada-002
+    createdAt: v.number(),
+    lastUpdated: v.number(), // Track when embedding was last updated
+    version: v.number(), // Track embedding model version
+  })
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 1536,
+    })
+    .index("by_message", ["messageId"])
+    .index("by_dm", ["directMessageId"])
+    .index("by_user", ["userId"]),
 });

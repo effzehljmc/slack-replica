@@ -1,30 +1,45 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 // Send a new message
 export const sendMessage = mutation({
   args: {
     content: v.string(),
-    channelId: v.id("channels"),
     authorId: v.id("users"),
+    channelId: v.id("channels"),
+    isAvatarMessage: v.optional(v.boolean()),
+    replyToId: v.optional(v.id("messages")),
     attachmentId: v.optional(v.id("attachments")),
   },
-  handler: async (ctx, {content, channelId, authorId, attachmentId }) => {
+  handler: async (ctx, args) => {
+    // Insert the message
     const messageId = await ctx.db.insert("messages", {
-      content,
-      channelId,
-      authorId,
-      attachmentId,
-      timestamp: Date.now(),
+      content: args.content,
+      authorId: args.authorId,
+      channelId: args.channelId,
+      createdAt: Date.now(),
+      isAvatarMessage: args.isAvatarMessage,
+      replyToId: args.replyToId,
+      attachmentId: args.attachmentId,
     });
 
-    // If there's an attachment, update it with the message ID
-    if (attachmentId) {
-      await ctx.db.patch(attachmentId, {
-        messageId,
-      });
-    }
+    // Queue embedding generation as a background job
+    await ctx.scheduler.runAfter(0, internal.rag.updateMessageEmbedding, {
+      messageId,
+      messageType: "message",
+      content: args.content,
+    });
+
+    // Check for avatar mentions and handle them
+    await ctx.scheduler.runAfter(0, internal.rag.handleAvatarMention, {
+      messageId,
+      channelId: args.channelId,
+      content: args.content,
+      authorId: args.authorId,
+      messageType: "message",
+    });
 
     return messageId;
   },
@@ -317,5 +332,12 @@ export const listChannelMessages = query({
       attachment: message.attachmentId ? attachmentMap.get(message.attachmentId) : undefined,
       replyCount: threadReplyCounts[index],
     }));
+  },
+});
+
+export const get = query({
+  args: { id: v.id("messages") },
+  handler: async (ctx, { id }) => {
+    return await ctx.db.get(id);
   },
 }); 

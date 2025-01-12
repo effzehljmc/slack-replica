@@ -6,6 +6,9 @@ export interface User {
   email: string;
   name?: string;
   status?: 'online' | 'offline' | 'away';
+  autoAvatarEnabled?: boolean;
+  avatarStyle?: string;
+  avatarTraits?: string[];
 }
 
 export interface AuthState {

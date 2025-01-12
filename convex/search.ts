@@ -103,21 +103,16 @@ export const searchAllMessages = query({
       let directMessages: Doc<"direct_messages">[] = [];
 
       // Use the appropriate index based on filters
-      if (args.userId) {
+      const userId = args.userId;
+      if (userId) {
         directMessages = await ctx.db
           .query("direct_messages")
-          .withIndex("by_sender")
-          .filter((q) => q.eq(q.field("senderId"), args.userId))
-          .collect();
-      } else if (args.startDate !== undefined) {
-        directMessages = await ctx.db
-          .query("direct_messages")
-          .withIndex("by_creation")
-          .filter((q) => q.gte(q.field("createdAt"), args.startDate!))
+          .withIndex("by_sender", (q) => q.eq("senderId", userId))
           .collect();
       } else {
         directMessages = await ctx.db
           .query("direct_messages")
+          .withIndex("by_sender")
           .collect();
       }
 
