@@ -8,6 +8,16 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
   - Email & Password authentication
   - Modern, responsive login/signup UI
 
+- 💬 **AI Avatars**
+  - Personal AI avatars for each user
+  - Context-aware responses using RAG
+  - Customizable personality traits
+  - Mention avatars in channels or DMs
+  - Real-time embedding generation
+  - Vector search for relevant context
+  - Smart prompt construction
+  - GPT-4 powered responses
+
 - 💬 **Real-time Messaging**
   - Instant message delivery
   - Message history persistence
@@ -232,6 +242,21 @@ slack-replica/
 - **Optimized Storage**: Efficient reaction data structure
 
 ## Recent Updates
+
+### AI Avatars
+- **Personal AI Representation**: Each user can enable their own AI avatar
+- **Natural Interaction**: Mention avatars using @Username's Avatar format
+- **Context-Aware**: Uses RAG (Retrieval Augmented Generation) for informed responses
+- **Customization**:
+  - Personality style settings
+  - Configurable traits (helpful, concise, positive, etc.)
+  - Optional example responses
+- **Technical Features**:
+  - OpenAI embeddings for message context
+  - Vector search for finding relevant messages
+  - Smart prompt construction with personality and context
+  - GPT-4 powered responses
+  - Support for both channels and direct messages
 
 ### Typing Indicators
 - Real-time typing status for channels and direct messages

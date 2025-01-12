@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useState, useEffect } from 'react';
+import { createContext, useCallback, useState } from 'react';
 import type { User, AuthState } from '../types';
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
