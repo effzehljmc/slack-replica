@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { api } from '@/convex/_generated/api';
@@ -20,6 +20,7 @@ import { FileUpload } from '@/features/chat/components/FileUpload';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { TypingIndicator } from "@/features/chat/components/TypingIndicator";
 import { WelcomeScreen } from '@/features/chat/components/WelcomeScreen';
+import Image from 'next/image';
 
 interface Channel {
   _id: Id<"channels">;
@@ -53,16 +54,19 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // All hooks at the top level
   const pathname = usePathname();
-  const isSettingsPage = pathname?.startsWith('/app/settings');
-
-  // If it's a settings page, just render the children
-  if (isSettingsPage) {
-    return children;
-  }
-
   const { isAuthenticated } = useAuth();
-  const router = useRouter();
+  const { data: user } = useCurrentUser();
+  
+  // Query hooks
+  const channelsQuery = useQuery(api.channels.listChannels);
+  const usersQuery = useQuery(
+    api.users.listUsers,
+    user?._id ? { currentUserId: user._id } : "skip"
+  );
+
+  // State hooks
   const [showChannelInput, setShowChannelInput] = useState(false);
   const [channelName, setChannelName] = useState('');
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
@@ -71,53 +75,31 @@ export default function AppLayout({
   const [messageInput, setMessageInput] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [isThreadOpen, setIsThreadOpen] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [attachmentId, setAttachmentId] = useState<Id<"attachments"> | null>(null);
   const [channelSearch, setChannelSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
-  const updateTypingStatus = useMutation(api.typing.updateTypingStatus);
-  const removeTypingStatus = useMutation(api.typing.removeTypingStatus);
+
+  // Ref hooks
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  // Get the current user
-  const { data: user } = useCurrentUser();
-
-  // Fetch channels and users data
-  const channelsQuery = useQuery(api.channels.listChannels);
-  const usersQuery = useQuery(
-    api.users.listUsers,
-    user?._id ? { currentUserId: user._id } : "skip"
-  );
-
-  // Memoize channels and users lists
-  const channels = useMemo(() => channelsQuery || [], [channelsQuery]);
-  const users = useMemo(() => usersQuery || [], [usersQuery]);
-
-  // Memoize the event handler functions
-  const handleChannelSelect = useCallback((channel: Channel) => {
-    setSelectedChannel(channel);
-    setSelectedUser(null);
-    setChatMode('channel');
-    setIsThreadOpen(false);
-    setSelectedMessage(null);
-  }, []);
-
-  const handleUserSelect = useCallback((selectedUser: DirectMessageUser) => {
-    setSelectedUser(selectedUser);
-    setSelectedChannel(null);
-    setChatMode('direct');
-    setIsThreadOpen(false);
-    setSelectedMessage(null);
-  }, []);
-
-  // Add activity status tracking
-  useActivityStatus();
-
+  // Helper functions
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Fetch messages based on mode
+  // Mutation hooks
+  const updateTypingStatus = useMutation(api.typing.updateTypingStatus);
+  const removeTypingStatus = useMutation(api.typing.removeTypingStatus);
+  const createChannel = useMutation(api.channels.createChannel);
+  const sendChannelMessage = useMutation(api.messages.sendMessage);
+  const sendDirectMessage = useMutation(api.direct_messages.sendDirectMessage);
+
+  // Memoized values
+  const channels = useMemo(() => channelsQuery || [], [channelsQuery]);
+  const users = useMemo(() => usersQuery || [], [usersQuery]);
+
+  // Fetch messages based on mode - these hooks need to run unconditionally
   const channelMessages = useQuery(
     api.messages.getMessages,
     selectedChannel && chatMode === 'channel' ? { channelId: selectedChannel._id } : "skip"
@@ -130,7 +112,7 @@ export default function AppLayout({
       : "skip"
   );
 
-  // Use type inference from the query results and map them to the correct types
+  // Memoized messages
   const messages = useMemo(() => {
     if (chatMode === 'channel' && channelMessages) {
       return channelMessages.map(msg => ({
@@ -153,23 +135,30 @@ export default function AppLayout({
     return [];
   }, [chatMode, channelMessages, directMessages]);
 
-  // Scroll to bottom when messages change
+  // Callback hooks
+  const handleChannelSelect = useCallback((channel: Channel) => {
+    setSelectedChannel(channel);
+    setSelectedUser(null);
+    setChatMode('channel');
+    setIsThreadOpen(false);
+    setSelectedMessage(null);
+  }, []);
+
+  const handleUserSelect = useCallback((selectedUser: DirectMessageUser) => {
+    setSelectedUser(selectedUser);
+    setSelectedChannel(null);
+    setChatMode('direct');
+    setIsThreadOpen(false);
+    setSelectedMessage(null);
+  }, []);
+
+  // Effect hooks
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
   }, [messages]);
 
-  // Prepare mutations
-  const createChannel = useMutation(api.channels.createChannel);
-  const sendChannelMessage = useMutation(api.messages.sendMessage);
-  const sendDirectMessage = useMutation(api.direct_messages.sendDirectMessage);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/');
-    }
-  }, [isAuthenticated, router]);
-
-  // Handle navigation from search results
   useEffect(() => {
     function handleEvent(event: Event): void {
       if (!(event instanceof CustomEvent)) return;
@@ -188,11 +177,9 @@ export default function AppLayout({
         const { type, channelId, userId, messageId } = typedDetail;
 
         if (type === 'channel' && channelId) {
-          // Switch to channel
           const channel = channels.find(c => c._id === channelId);
           if (channel) {
             handleChannelSelect(channel);
-            // Scroll to message after messages are loaded
             const checkAndScrollToMessage = () => {
               const messageElement = document.getElementById(`message-${messageId}`);
               if (messageElement) {
@@ -202,18 +189,15 @@ export default function AppLayout({
                   messageElement.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
                 }, 2000);
               } else {
-                // Try again in 100ms if message not found (messages might still be loading)
                 setTimeout(checkAndScrollToMessage, 100);
               }
             };
             setTimeout(checkAndScrollToMessage, 100);
           }
         } else if (type === 'direct' && userId) {
-          // Switch to DM
           const user = users.find(u => u._id === userId);
           if (user) {
             handleUserSelect(user);
-            // Scroll to message after messages are loaded
             const checkAndScrollToMessage = () => {
               const messageElement = document.getElementById(`message-${messageId}`);
               if (messageElement) {
@@ -223,7 +207,6 @@ export default function AppLayout({
                   messageElement.classList.remove('bg-yellow-100', 'dark:bg-yellow-900/30');
                 }, 2000);
               } else {
-                // Try again in 100ms if message not found (messages might still be loading)
                 setTimeout(checkAndScrollToMessage, 100);
               }
             };
@@ -237,6 +220,34 @@ export default function AppLayout({
     return () => window.removeEventListener('navigate-to-message', handleEvent);
   }, [channels, users, handleChannelSelect, handleUserSelect]);
 
+  useEffect(() => {
+    if (!user?._id) return;
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      if (chatMode === 'channel' && selectedChannel) {
+        removeTypingStatus({
+          userId: user._id,
+          channelId: selectedChannel._id,
+          chatType: "channel",
+        }).catch(console.error);
+      } else if (chatMode === 'direct' && selectedUser) {
+        removeTypingStatus({
+          userId: user._id,
+          receiverId: selectedUser._id,
+          chatType: "direct",
+        }).catch(console.error);
+      }
+    };
+  }, [chatMode, selectedChannel, selectedUser, user, removeTypingStatus]);
+
+  // Add activity status tracking
+  useActivityStatus();
+
+  // Event handlers
   const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessageInput(e.target.value);
     
@@ -282,30 +293,11 @@ export default function AppLayout({
     }, 3000);
   };
 
-  // Cleanup typing status on unmount or chat change
-  useEffect(() => {
-    if (!user?._id) return;
-
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
-      if (chatMode === 'channel' && selectedChannel) {
-        removeTypingStatus({
-          userId: user._id,
-          channelId: selectedChannel._id,
-          chatType: "channel",
-        }).catch(console.error);
-      } else if (chatMode === 'direct' && selectedUser) {
-        removeTypingStatus({
-          userId: user._id,
-          receiverId: selectedUser._id,
-          chatType: "direct",
-        }).catch(console.error);
-      }
-    };
-  }, [chatMode, selectedChannel, selectedUser, user, removeTypingStatus]);
+  // Now we can do conditional returns after all hooks
+  const isSettingsPage = pathname?.startsWith('/app/settings');
+  if (isSettingsPage) {
+    return children;
+  }
 
   if (!isAuthenticated) {
     return null;
@@ -389,31 +381,6 @@ export default function AppLayout({
     }
   };
 
-  const handleDirectMessageSubmit = async (content: string) => {
-    if (!selectedUser || !user) return;
-
-    console.log("[Client] Sending direct message", {
-      content,
-      senderId: user._id,
-      receiverId: selectedUser._id,
-      hasAttachment: !!attachmentId
-    });
-
-    try {
-      const messageId = await sendDirectMessage({
-        content,
-        senderId: user._id,
-        receiverId: selectedUser._id,
-        attachmentId: attachmentId || undefined,
-      });
-
-      console.log("[Client] Direct message sent successfully", { messageId });
-      setAttachmentId(null);
-    } catch (error) {
-      console.error("[Client] Error sending direct message:", error);
-    }
-  };
-
   return (
     <SearchProvider>
       <ChatLayout>
@@ -422,10 +389,12 @@ export default function AppLayout({
           <div className="w-64 bg-gray-800 text-white flex flex-col">
             {/* Workspace Header */}
             <div className="p-4 border-b border-gray-700 flex items-center gap-3">
-              <img 
+              <Image 
                 src="https://cdn.prod.website-files.com/671d0f620752c1fed9d57d14/672d13130d0b313e9e1fa956_mega-creator%20(11)-p-500.png"
                 alt="ChatGenius Logo"
-                className="h-8 w-8 object-contain"
+                width={32}
+                height={32}
+                className="object-contain"
               />
               <h1 className="text-xl font-semibold">ChatGenius</h1>
             </div>

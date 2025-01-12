@@ -7,6 +7,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'aromatic-clownfish-974.convex.cloud',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn.prod.website-files.com',
+      },
     ],
   },
 }
