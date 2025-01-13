@@ -9,6 +9,7 @@ export interface User {
   autoAvatarEnabled?: boolean;
   avatarStyle?: string;
   avatarTraits?: string[];
+  voiceDescription?: string;
 }
 
 export interface AuthState {

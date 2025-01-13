@@ -1,11 +1,11 @@
 'use client';
 
 import { Message, isDirectMessage, isChannelMessage } from "../types";
-import { MessageSquare, MoreVertical, Pencil, Trash2, Bot } from "lucide-react";
+import { MessageSquare, MoreVertical, Pencil, Trash2, Bot, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MessageReactions } from "./MessageReactions";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,11 +46,23 @@ export function MessageItem({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editedContent, setEditedContent] = useState(message.content);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isInitializingRef = useRef(false);
   
   const editChannelMessage = useMutation(api.messages.editMessage);
   const deleteChannelMessage = useMutation(api.messages.deleteMessage);
   const editDirectMessage = useMutation(api.direct_messages.editDirectMessage);
   const deleteDirectMessage = useMutation(api.direct_messages.deleteDirectMessage);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup: cancel any ongoing speech when component unmounts
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const handleThreadClick = () => {
     if (!isThreadReply && isChannelMessage(message) && onThreadClick) {
@@ -110,6 +122,88 @@ export function MessageItem({
     if (e.key === "Escape") {
       setIsEditing(false);
       setEditedContent(message.content);
+    }
+  };
+
+  const handleVoiceToggle = async () => {
+    if (!window.speechSynthesis) {
+      console.error('Speech synthesis not supported in this browser');
+      return;
+    }
+
+    // If currently speaking or initializing, stop
+    if (isSpeaking || isInitializingRef.current) {
+      isInitializingRef.current = false;
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    try {
+      isInitializingRef.current = true;
+
+      // Create new utterance for each speech request
+      const utterance = new SpeechSynthesisUtterance(message.content);
+      speechRef.current = utterance;
+
+      // Get available voices
+      let voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) {
+        // Wait for voices to load if they're not available yet
+        await new Promise<void>((resolve) => {
+          const handleVoicesChanged = () => {
+            voices = window.speechSynthesis.getVoices();
+            window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+            resolve();
+          };
+          window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+        });
+      }
+      
+      // Try to find an English voice
+      const englishVoice = voices.find(voice => 
+        voice.lang.startsWith('en-') && !voice.localService
+      ) || voices.find(voice => 
+        voice.lang.startsWith('en-')
+      ) || voices[0];
+
+      if (englishVoice) {
+        utterance.voice = englishVoice;
+      }
+
+      // Set speech properties
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      // Handle speech end
+      utterance.onend = () => {
+        isInitializingRef.current = false;
+        setIsSpeaking(false);
+      };
+
+      // Handle speech error
+      utterance.onerror = (event) => {
+        if (event.error !== 'canceled') {
+          console.error('Speech synthesis error:', event.error);
+        }
+        isInitializingRef.current = false;
+        setIsSpeaking(false);
+      };
+
+      // Handle speech start
+      utterance.onstart = () => {
+        isInitializingRef.current = false;
+        setIsSpeaking(true);
+      };
+
+      // Start speaking
+      window.speechSynthesis.cancel(); // Cancel any ongoing speech
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('Failed to initialize speech:', error);
+      isInitializingRef.current = false;
+      setIsSpeaking(false);
     }
   };
 
@@ -227,6 +321,25 @@ export function MessageItem({
             >
               <MessageSquare className="h-4 w-4 mr-1" />
               {message.threadCount || 0}
+            </Button>
+          )}
+
+          {/* Voice toggle - only for AI avatar messages */}
+          {message.isAvatarMessage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "transition-opacity",
+                isSpeaking ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              )}
+              onClick={handleVoiceToggle}
+            >
+              {isSpeaking ? (
+                <VolumeX className="h-4 w-4" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
             </Button>
           )}
 

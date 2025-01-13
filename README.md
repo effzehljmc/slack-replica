@@ -17,6 +17,8 @@ A modern real-time chat application built with Next.js 14, featuring real-time m
   - Vector search for relevant context
   - Smart prompt construction
   - GPT-4 powered responses
+  - Text-to-speech capabilities
+  - Custom voice instructions
 
 - 💬 **Real-time Messaging**
   - Instant message delivery
@@ -242,6 +244,13 @@ slack-replica/
 - **Optimized Storage**: Efficient reaction data structure
 
 ## Recent Updates
+
+### Voice Features
+- **Text-to-Speech**: AI messages can be played back using text-to-speech
+- **Voice Customization**: Users can set custom voice instructions for their AI avatar
+- **Toggle Controls**: Easy-to-use voice toggle button for each AI message
+- **Voice Settings**: Configurable voice preferences in AI Avatar settings
+- **Smart Voice Handling**: Efficient voice synthesis with proper cleanup and error handling
 
 ### AI Avatars
 - **Personal AI Representation**: Each user can enable their own AI avatar

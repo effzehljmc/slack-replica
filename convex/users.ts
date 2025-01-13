@@ -54,4 +54,23 @@ export const updateStatus = mutation({
     });
     return status;
   },
+});
+
+// Update user voice description
+export const updateVoiceDescription = mutation({
+  args: {
+    userId: v.id("users"),
+    voiceDescription: v.string(),
+  },
+  handler: async (ctx, { userId, voiceDescription }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(userId, { 
+      voiceDescription
+    });
+    return voiceDescription;
+  },
 }); 

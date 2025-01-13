@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, Save } from 'lucide-react'
+import { Check, Save, ArrowLeft } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user"
+import { useRouter } from 'next/navigation'
 
 const personalityStyles = [
   { value: 'professional', label: 'Professional' },
@@ -58,10 +59,13 @@ function parseStyleString(style?: string): { type: string; custom?: string } {
 
 export default function AIAvatarSettings() {
   const { data: user } = useCurrentUser();
+  const router = useRouter();
   const enableAutoAvatar = useMutation(api.rag.enableAutoAvatar);
+  const updateVoiceDescription = useMutation(api.users.updateVoiceDescription);
 
   const [isEnabled, setIsEnabled] = useState(user?.autoAvatarEnabled ?? false);
   const [isSaved, setIsSaved] = useState(false);
+  const [voiceDescription, setVoiceDescription] = useState(user?.voiceDescription ?? '');
   
   // Initialize personality style from user settings
   const parsedStyle = parseStyleString(user?.avatarStyle);
@@ -76,20 +80,28 @@ export default function AIAvatarSettings() {
     setPersonality(parsed.type);
     setCustomStyle(parsed.custom ?? '');
     setSelectedTraits(user?.avatarTraits ?? []);
+    setVoiceDescription(user?.voiceDescription ?? '');
   }, [user]);
 
   const handleSave = async () => {
     if (!user?._id) return;
 
     try {
-      await enableAutoAvatar({
-        userId: user._id,
-        enabled: isEnabled,
-        style: personality === 'custom' 
-          ? customStyle 
-          : `You are ${personality} and like to keep responses concise`,
-        traits: isEnabled ? selectedTraits : [],
-      });
+      await Promise.all([
+        enableAutoAvatar({
+          userId: user._id,
+          enabled: isEnabled,
+          style: personality === 'custom' 
+            ? customStyle 
+            : `You are ${personality} and like to keep responses concise`,
+          traits: isEnabled ? selectedTraits : [],
+        }),
+        updateVoiceDescription({
+          userId: user._id,
+          voiceDescription: voiceDescription.trim(),
+        })
+      ]);
+      
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
     } catch (error) {
@@ -107,9 +119,17 @@ export default function AIAvatarSettings() {
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>AI Avatar Settings</CardTitle>
-        <CardDescription>
+      <CardHeader className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute left-6 top-6"
+          onClick={() => router.push('/app')}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <CardTitle className="text-center">AI Avatar Settings</CardTitle>
+        <CardDescription className="text-center">
           Customize how your AI avatar behaves and responds in conversations
         </CardDescription>
       </CardHeader>
@@ -191,6 +211,22 @@ export default function AIAvatarSettings() {
             </p>
           </div>
         )}
+
+        {/* Voice Description */}
+        <div className="space-y-2">
+          <Label htmlFor="voiceDescription">Voice Instructions</Label>
+          <Textarea
+            id="voiceDescription"
+            placeholder="Describe how you want your AI to speak (e.g., 'Speak in a calm, professional tone with a slight British accent')"
+            className="min-h-[100px]"
+            value={voiceDescription}
+            onChange={(e) => setVoiceDescription(e.target.value)}
+            disabled={!isEnabled}
+          />
+          <p className="text-sm text-muted-foreground">
+            These instructions will guide how your AI avatar speaks in voice conversations
+          </p>
+        </div>
 
         {/* Save Button */}
         <Button

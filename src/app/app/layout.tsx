@@ -326,59 +326,37 @@ export default function AppLayout({
     setSelectedMessage(null);
   };
 
-  const handleMessageSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!messageInput.trim() && !attachmentId) return;
-    if (!user?._id) return;
+  const handleMessageSubmit = async (content: string) => {
+    if (!user) return;
 
     try {
       if (chatMode === 'channel' && selectedChannel) {
-        console.log('[Client] Sending channel message', {
-          content: messageInput.trim(),
-          channelId: selectedChannel._id.toString(),
-          authorId: user._id.toString(),
-          hasAttachment: !!attachmentId
-        });
-        
         await sendChannelMessage({
-          content: messageInput.trim(),
-          channelId: selectedChannel._id,
+          content,
           authorId: user._id,
-          attachmentId: attachmentId || undefined,
+          channelId: selectedChannel._id,
+          isAvatarMessage: false,
         });
       } else if (chatMode === 'direct' && selectedUser) {
-        console.log('[Client] Sending direct message', {
-          content: messageInput.trim(),
-          senderId: user._id.toString(),
-          receiverId: selectedUser._id.toString(),
-          hasAttachment: !!attachmentId
-        });
-        
-        const messageId = await sendDirectMessage({
-          content: messageInput.trim(),
+        await sendDirectMessage({
+          content,
           senderId: user._id,
           receiverId: selectedUser._id,
-          attachmentId: attachmentId || undefined,
+          isAvatarMessage: false,
         });
+      }
 
-        console.log('[Client] Direct message sent', {
-          messageId: messageId.toString()
-        });
-      }
-      
       setMessageInput('');
-      setAttachmentId(null);
     } catch (error) {
-      let errorMessage: string;
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else {
-        errorMessage = 'An unknown error occurred';
-      }
-      console.error('[Client] Failed to send message:', errorMessage);
+      console.error('Failed to send message:', error);
     }
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!messageInput.trim() && !attachmentId) return;
+    await handleMessageSubmit(messageInput.trim());
+    setAttachmentId(null);
   };
 
   return (
@@ -615,7 +593,10 @@ export default function AppLayout({
                     />
                   )
                 ))}
-                <form onSubmit={handleMessageSubmit} className="flex flex-col gap-2">
+                <form 
+                  onSubmit={handleFormSubmit}
+                  className="flex items-center gap-2 p-4 border-t border-gray-700"
+                >
                   {attachmentId && (
                     <div className="px-2">
                       <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">

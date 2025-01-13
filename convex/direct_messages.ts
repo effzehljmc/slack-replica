@@ -10,8 +10,9 @@ export const sendDirectMessage = mutation({
     senderId: v.id("users"),
     receiverId: v.id("users"),
     attachmentId: v.optional(v.id("attachments")),
+    isAvatarMessage: v.optional(v.boolean()),
   },
-  handler: async (ctx, { content, senderId, receiverId, attachmentId }) => {
+  handler: async (ctx, { content, senderId, receiverId, attachmentId, isAvatarMessage }) => {
     try {
       // Check if message mentions an avatar
       const hasAvatarMention = content.match(/@[a-zA-Z0-9]+\'s\s*avatar/i) !== null;
@@ -22,6 +23,7 @@ export const sendDirectMessage = mutation({
         receiverId,
         attachmentId,
         createdAt: Date.now(),
+        isAvatarMessage: isAvatarMessage ?? false,
         isAvatarMentioned: hasAvatarMention,
       });
 

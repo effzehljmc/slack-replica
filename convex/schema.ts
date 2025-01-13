@@ -60,6 +60,7 @@ export default defineSchema({
     autoAvatarEnabled: v.optional(v.boolean()),
     avatarStyle: v.optional(v.string()),
     avatarTraits: v.optional(v.array(v.string())),
+    voiceDescription: v.optional(v.string()),
   })
     .index("by_email", ["email"]),
 

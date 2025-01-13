@@ -423,6 +423,7 @@ export const handleAvatarMention = internalAction({
     content: v.string(),
     authorId: v.id("users"),
     messageType: v.union(v.literal("message"), v.literal("direct_message")),
+    shouldSpeak: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     try {
@@ -525,7 +526,8 @@ export const handleAvatarMention = internalAction({
         personality: {
           style: mentionedUser.avatarStyle ?? "You are friendly, direct, and like to use emojis",
           traits: mentionedUser.avatarTraits ?? ["helpful", "concise", "positive"]
-        }
+        },
+        shouldSpeak: args.shouldSpeak
       });
 
       // 7. Call OpenAI for completion
@@ -611,6 +613,7 @@ export const constructPrompt = internalAction({
       traits: v.array(v.string()),
       examples: v.optional(v.array(v.string())),
     }),
+    shouldSpeak: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<string> => {
     console.log("[DM Debug] Constructing prompt for user:", args.userId);
@@ -623,36 +626,28 @@ export const constructPrompt = internalAction({
       throw new Error("User not found");
     }
 
-    // Format the context block
-    const contextBlock = args.relevantMessages.length > 0
-      ? `Here is recent Slack Replica context:\n${formatMessagesContext(args.relevantMessages)}`
-      : "No relevant context found.";
+    // Format the context from relevant messages
+    const contextBlock = formatMessagesContext(args.relevantMessages);
 
-    // Format personality traits
-    const traitsFormatted = args.personality.traits.join(", ");
-    
-    // Format examples if available
-    const examplesBlock = args.personality.examples && args.personality.examples.length > 0
-      ? "\nHere are some example responses in the user's style:\n" + args.personality.examples.join("\n")
-      : "";
+    // Construct the voice block if speech is requested
+    let voiceBlock = "";
+    if (args.shouldSpeak && user.voiceDescription) {
+      voiceBlock = `\n\nVOICE INSTRUCTIONS: ${user.voiceDescription}\nPlease format your response in a way that follows these voice instructions while maintaining your personality.`;
+    }
 
     // Construct the final prompt
-    const finalPrompt = `You are responding as ${user.name}'s AI Avatar. ${args.personality.style}
-Key traits: ${traitsFormatted}${examplesBlock}
+    const prompt = `You are an AI assistant with the following personality:
+Style: ${args.personality.style}
+Traits: ${args.personality.traits.join(", ")}
 
+CONVERSATION CONTEXT:
 ${contextBlock}
 
-Current query: ${args.query}
+CURRENT QUERY: ${args.query}${voiceBlock}
 
-Please respond in a way that:
-1. Maintains the specified personality and style
-2. Uses the context appropriately when relevant
-3. Provides a clear and helpful response to the query
-4. Keeps the response concise and focused
+Please respond in a way that matches your personality and style.${args.shouldSpeak ? " Remember to follow the voice instructions when crafting your response." : ""}`;
 
-Response:`;
-
-    return finalPrompt;
+    return prompt;
   },
 });
 
@@ -695,5 +690,21 @@ export const sendAvatarDirectMessage = internalMutation({
       isAvatarMessage: true,
       replyToId: args.replyToId
     });
+  },
+});
+
+// Public mutation to handle voice synthesis requests
+export const synthesizeVoice = action({
+  args: {
+    messageId: v.union(v.id("messages"), v.id("direct_messages")),
+    channelId: v.optional(v.id("channels")),
+    receiverId: v.optional(v.id("users")),
+    content: v.string(),
+    authorId: v.id("users"),
+    messageType: v.union(v.literal("message"), v.literal("direct_message")),
+    shouldSpeak: v.boolean(),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean } | null> => {
+    return await ctx.runAction(internal.rag.handleAvatarMention, args);
   },
 }); 
