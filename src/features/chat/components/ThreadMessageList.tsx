@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { ChannelMessage } from "../types";
+import { Message } from "../types";
 import { MessageItem } from "./MessageItem";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user";
@@ -20,24 +20,15 @@ export function ThreadMessageList({ threadId }: ThreadMessageListProps) {
   return (
     <div className="flex flex-col gap-2 p-4">
       {messages.map(msg => {
-        const message: ChannelMessage = {
-          _id: msg._id,
-          content: msg.content,
-          authorId: msg.authorId,
-          author: {
-            name: msg.author?.name || '',
-            email: msg.author?.email || '',
-          },
-          createdAt: msg.createdAt,
-          channelId: msg.channelId,
-          threadId: msg.threadId,
-          hasThreadReplies: msg.hasThreadReplies,
-          replyCount: msg.replyCount,
-        };
+        if (!msg.author) return null;
+
         return (
           <MessageItem 
             key={msg._id} 
-            message={message} 
+            message={msg as Message & {
+              author: { name?: string; email: string; isAI?: boolean };
+              createdAt: number;
+            }} 
             isThreadReply 
             currentUserId={user._id}
           />

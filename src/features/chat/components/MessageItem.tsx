@@ -18,7 +18,7 @@ interface MessageItemProps {
     author: {
       name?: string;
       email: string;
-      isAvatarMessage?: boolean;
+      isAI?: boolean;
     };
     createdAt: number;
     threadCount?: number;
@@ -119,7 +119,7 @@ export function MessageItem({
       className={cn(
         "group relative flex gap-4 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50",
         isGrouped && "py-0.5",
-        message.isAvatarMessage && "bg-primary/5 border-l-2 border-primary"
+        message.author.isAI && "bg-primary/5 border-l-2 border-primary"
       )}
     >
       {/* Avatar - only show if not grouped */}
@@ -127,16 +127,16 @@ export function MessageItem({
         <div className="flex-shrink-0 w-10 h-10 relative">
           <div className={cn(
             "w-10 h-10 rounded-full flex items-center justify-center",
-            message.isAvatarMessage ? "bg-primary/10" : "bg-gray-200 dark:bg-gray-700"
+            message.author.isAI ? "bg-primary/10" : "bg-gray-200 dark:bg-gray-700"
           )}>
             <span className={cn(
               "text-lg font-semibold",
-              message.isAvatarMessage ? "text-primary" : "text-gray-600 dark:text-gray-300"
+              message.author.isAI ? "text-primary" : "text-gray-600 dark:text-gray-300"
             )}>
               {message.author.name?.[0]?.toUpperCase() || message.author.email[0]?.toUpperCase()}
             </span>
           </div>
-          {message.isAvatarMessage && (
+          {message.author.isAI && (
             <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5">
               <Bot className="w-3 h-3" />
             </div>
@@ -154,7 +154,7 @@ export function MessageItem({
           <div className="flex items-center gap-2">
             <span className={cn(
               "font-semibold",
-              message.isAvatarMessage && "text-primary"
+              message.author.isAI && "text-primary"
             )}>
               {message.author.name || message.author.email}
             </span>
@@ -254,13 +254,42 @@ export function MessageItem({
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem 
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-red-500 hover:text-red-600"
+                onClick={() => !isDeleting && setShowDeleteConfirm(true)}
+                className={cn(
+                  "text-red-500 hover:text-red-600",
+                  isDeleting && "opacity-50 cursor-not-allowed"
+                )}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </DropdownMenuItem>
             </DropdownMenu>
+          )}
+
+          {/* Delete confirmation dialog */}
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+                <h3 className="text-lg font-semibold mb-4">Delete Message</h3>
+                <p className="text-muted-foreground mb-6">Are you sure you want to delete this message? This action cannot be undone.</p>
+                <div className="flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
