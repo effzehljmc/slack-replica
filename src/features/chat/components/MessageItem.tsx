@@ -1,7 +1,7 @@
 'use client';
 
 import { Message, isDirectMessage, isChannelMessage } from "../types";
-import { MessageSquare, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { MessageSquare, MoreVertical, Pencil, Trash2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MessageReactions } from "./MessageReactions";
@@ -14,13 +14,34 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { MessageAttachment } from "./MessageAttachment";
 
 interface MessageItemProps {
-  message: Message;
+  message: Message & {
+    author: {
+      name?: string;
+      email: string;
+      isAvatarMessage?: boolean;
+    };
+    createdAt: number;
+    threadCount?: number;
+    attachment?: {
+      fileName: string;
+      fileType: string;
+      storageId: string;
+      fileSize: number;
+    };
+  };
   isThreadReply?: boolean;
   onThreadClick?: (message: Message) => void;
   currentUserId: Id<"users">;
+  isGrouped?: boolean;
 }
 
-export function MessageItem({ message, isThreadReply, onThreadClick, currentUserId }: MessageItemProps) {
+export function MessageItem({ 
+  message, 
+  isThreadReply, 
+  onThreadClick, 
+  currentUserId,
+  isGrouped = false 
+}: MessageItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -92,149 +113,157 @@ export function MessageItem({ message, isThreadReply, onThreadClick, currentUser
     }
   };
 
-  const authorName = message.author?.name || message.author?.email || 'Unknown';
-  const timestamp = message.timestamp || message.createdAt || Date.now();
-  const messageType = isDirectMessage(message) ? "direct_message" : "message";
-  const canShowThreadButton = !isThreadReply && isChannelMessage(message);
-  const isAuthor = isChannelMessage(message) 
-    ? message.authorId === currentUserId 
-    : message.senderId === currentUserId;
-
   return (
     <div 
       id={`message-${message._id}`}
       className={cn(
-        "group px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50",
-        "transition-colors duration-200"
+        "group relative flex gap-4 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/50",
+        isGrouped && "py-0.5",
+        message.isAvatarMessage && "bg-primary/5 border-l-2 border-primary"
       )}
     >
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{authorName}</span>
-          <span className="text-sm text-gray-500">
-            {new Date(timestamp).toLocaleTimeString()}
-          </span>
-          {message.isEdited && (
-            <span className="text-xs text-gray-400">(edited)</span>
-          )}
-          {isAuthor && (
-            <div className="relative ml-auto">
-              <DropdownMenu
-                trigger={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-8 w-8 p-0",
-                      "opacity-0 group-hover:opacity-100",
-                      "focus:opacity-100",
-                      "transition-opacity duration-200"
-                    )}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                }
-              >
-                <DropdownMenuItem onClick={handleEdit}>
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                {showDeleteConfirm ? (
-                  <DropdownMenuItem 
-                    onClick={handleDelete}
-                    className={cn(
-                      "text-red-600 font-medium",
-                      isDeleting && "opacity-50 pointer-events-none"
-                    )}
-                  >
-                    {isDeleting ? (
-                      <>
-                        <span className="h-4 w-4 mr-2 animate-spin">⏳</span>
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Confirm Delete
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem 
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenu>
+      {/* Avatar - only show if not grouped */}
+      {!isGrouped && (
+        <div className="flex-shrink-0 w-10 h-10 relative">
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center",
+            message.isAvatarMessage ? "bg-primary/10" : "bg-gray-200 dark:bg-gray-700"
+          )}>
+            <span className={cn(
+              "text-lg font-semibold",
+              message.isAvatarMessage ? "text-primary" : "text-gray-600 dark:text-gray-300"
+            )}>
+              {message.author.name?.[0]?.toUpperCase() || message.author.email[0]?.toUpperCase()}
+            </span>
+          </div>
+          {message.isAvatarMessage && (
+            <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5">
+              <Bot className="w-3 h-3" />
             </div>
           )}
         </div>
-        {isEditing ? (
-          <div className="mt-1">
-            <Textarea
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="min-h-[60px]"
-              autoFocus
-            />
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" onClick={handleEdit}>Save</Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditedContent(message.content);
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-1 space-y-2">
-            <p>{message.content}</p>
-            {message.attachment && (
-              <div className="mt-2">
-                <MessageAttachment 
-                  fileName={message.attachment.fileName}
-                  fileType={message.attachment.fileType}
-                  storageId={message.attachment.storageId}
-                  fileSize={message.attachment.fileSize}
-                />
-              </div>
-            )}
+      )}
+
+      {/* Message content */}
+      <div className={cn(
+        "flex-1 space-y-1",
+        isGrouped && "ml-14" // Add left margin when grouped to align with the first message
+      )}>
+        {/* Author and timestamp - only show if not grouped */}
+        {!isGrouped && (
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "font-semibold",
+              message.isAvatarMessage && "text-primary"
+            )}>
+              {message.author.name || message.author.email}
+            </span>
+            <span className="text-xs text-gray-500">
+              {new Date(message.createdAt).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
+            </span>
           </div>
         )}
-        <MessageReactions 
-          targetId={message._id} 
-          targetType={messageType}
-        />
+
+        {/* Message content */}
+        <div className="space-y-2">
+          {isEditing ? (
+            <div className="space-y-2">
+              <Textarea
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="min-h-[100px]"
+              />
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => handleEdit()}
+                  disabled={editedContent.trim() === message.content}
+                >
+                  Save
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditedContent(message.content);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="whitespace-pre-wrap">{message.content}</p>
+              {message.attachment && (
+                <div className="mt-2">
+                  <MessageAttachment 
+                    fileName={message.attachment.fileName}
+                    fileType={message.attachment.fileType}
+                    storageId={message.attachment.storageId}
+                    fileSize={message.attachment.fileSize}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Message actions */}
+        <div className={cn(
+          "flex items-center gap-2",
+          isGrouped && "mt-1" // Add top margin when grouped
+        )}>
+          {/* Thread button - only for channel messages */}
+          {!isThreadReply && isChannelMessage(message) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={handleThreadClick}
+            >
+              <MessageSquare className="h-4 w-4 mr-1" />
+              {message.threadCount || 0}
+            </Button>
+          )}
+
+          {/* Reactions */}
+          <MessageReactions
+            targetId={message._id}
+            targetType={isChannelMessage(message) ? "message" : "direct_message"}
+          />
+
+          {/* Edit/Delete dropdown - only for user's own messages */}
+          {message.authorId === currentUserId && (
+            <DropdownMenu
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              }
+            >
+              <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-red-500 hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
-      
-      {canShowThreadButton && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "flex items-center gap-1",
-            message.hasThreadReplies ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-            "transition-opacity"
-          )}
-          onClick={handleThreadClick}
-        >
-          <MessageSquare className="h-4 w-4" />
-          {message.hasThreadReplies && (
-            <span className="text-xs">
-              {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
-            </span>
-          )}
-        </Button>
-      )}
     </div>
   );
 } 

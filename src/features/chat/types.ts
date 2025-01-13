@@ -20,11 +20,14 @@ interface BaseMessage {
   author?: {
     name: string;
     email: string;
+    isAI?: boolean;
   };
   timestamp?: number;
   createdAt?: number;
   attachmentId?: Id<"attachments">;
   attachment?: Attachment;
+  shouldGroup?: boolean;
+  isAvatarMessage?: boolean;
 }
 
 // Regular channel message

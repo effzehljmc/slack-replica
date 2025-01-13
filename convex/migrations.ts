@@ -36,4 +36,46 @@ export const migrateReactions = mutation({
       }
     }
   },
+});
+
+// Migrate AI messages to use isAvatarMessage flag
+export const migrateAIMessages = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Get all AI users
+    const aiUsers = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("autoAvatarEnabled"), true))
+      .collect();
+
+    const aiUserIds = new Set(aiUsers.map(user => user._id));
+
+    // Update channel messages
+    const channelMessages = await ctx.db
+      .query("messages")
+      .filter((q) => q.eq(q.field("isAvatarMessage"), undefined))
+      .collect();
+
+    for (const message of channelMessages) {
+      if (aiUserIds.has(message.authorId)) {
+        await ctx.db.patch(message._id, {
+          isAvatarMessage: true
+        });
+      }
+    }
+
+    // Update direct messages
+    const directMessages = await ctx.db
+      .query("direct_messages")
+      .filter((q) => q.eq(q.field("isAvatarMessage"), undefined))
+      .collect();
+
+    for (const message of directMessages) {
+      if (aiUserIds.has(message.senderId)) {
+        await ctx.db.patch(message._id, {
+          isAvatarMessage: true
+        });
+      }
+    }
+  },
 }); 

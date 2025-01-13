@@ -421,12 +421,7 @@ Once we have the top relevant messages:
 
 ---
 
-## 7. Scaling Beyond Naive Retrieval
 
-• For larger datasets, consider an external vector DB (Pinecone, Qdrant, Weaviate) or indexing solution.  
-• The flow remains the same: store embeddings during message creation → retrieve top K context chunks → generate with LLM.
-
----
 
 ## 8. Implementation Checklist
 
