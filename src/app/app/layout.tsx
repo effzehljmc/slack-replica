@@ -58,6 +58,12 @@ export default function AppLayout({
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
   const { data: user } = useCurrentUser();
+  const [isMounted, setIsMounted] = useState(false);
+
+  // State hooks - moved up before queries that depend on them
+  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
+  const [selectedUser, setSelectedUser] = useState<DirectMessageUser | null>(null);
+  const [chatMode, setChatMode] = useState<ChatMode>('channel');
   
   // Query hooks
   const channelsQuery = useQuery(api.channels.listChannels);
@@ -66,40 +72,7 @@ export default function AppLayout({
     user?._id ? { currentUserId: user._id } : "skip"
   );
 
-  // State hooks
-  const [showChannelInput, setShowChannelInput] = useState(false);
-  const [channelName, setChannelName] = useState('');
-  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-  const [selectedUser, setSelectedUser] = useState<DirectMessageUser | null>(null);
-  const [chatMode, setChatMode] = useState<ChatMode>('channel');
-  const [messageInput, setMessageInput] = useState('');
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [isThreadOpen, setIsThreadOpen] = useState(false);
-  const [attachmentId, setAttachmentId] = useState<Id<"attachments"> | null>(null);
-  const [channelSearch, setChannelSearch] = useState('');
-  const [userSearch, setUserSearch] = useState('');
-
-  // Ref hooks
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  // Helper functions
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Mutation hooks
-  const updateTypingStatus = useMutation(api.typing.updateTypingStatus);
-  const removeTypingStatus = useMutation(api.typing.removeTypingStatus);
-  const createChannel = useMutation(api.channels.createChannel);
-  const sendChannelMessage = useMutation(api.messages.sendMessage);
-  const sendDirectMessage = useMutation(api.direct_messages.sendDirectMessage);
-
-  // Memoized values
-  const channels = useMemo(() => channelsQuery || [], [channelsQuery]);
-  const users = useMemo(() => usersQuery || [], [usersQuery]);
-
-  // Fetch messages based on mode - these hooks need to run unconditionally
+  // Message queries
   const channelMessages = useQuery(
     api.messages.getMessages,
     selectedChannel && chatMode === 'channel' ? { channelId: selectedChannel._id } : "skip"
@@ -112,7 +85,31 @@ export default function AppLayout({
       : "skip"
   );
 
-  // Memoized messages
+  // Remaining state hooks
+  const [showChannelInput, setShowChannelInput] = useState(false);
+  const [channelName, setChannelName] = useState('');
+  const [messageInput, setMessageInput] = useState('');
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [isThreadOpen, setIsThreadOpen] = useState(false);
+  const [attachmentId, setAttachmentId] = useState<Id<"attachments"> | null>(null);
+  const [channelSearch, setChannelSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
+
+  // Ref hooks
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  // Mutation hooks
+  const updateTypingStatus = useMutation(api.typing.updateTypingStatus);
+  const removeTypingStatus = useMutation(api.typing.removeTypingStatus);
+  const createChannel = useMutation(api.channels.createChannel);
+  const sendChannelMessage = useMutation(api.messages.sendMessage);
+  const sendDirectMessage = useMutation(api.direct_messages.sendDirectMessage);
+
+  // Memoized values
+  const channels = useMemo(() => channelsQuery || [], [channelsQuery]);
+  const users = useMemo(() => usersQuery || [], [usersQuery]);
+  
   const messages = useMemo(() => {
     if (chatMode === 'channel' && channelMessages) {
       return channelMessages.map(msg => ({
@@ -153,6 +150,10 @@ export default function AppLayout({
   }, []);
 
   // Effect hooks
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   useEffect(() => {
     if (messages.length > 0) {
       scrollToBottom();
@@ -247,6 +248,25 @@ export default function AppLayout({
   // Add activity status tracking
   useActivityStatus();
 
+  // Helper functions
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Early returns after all hooks are defined
+  if (!isMounted) {
+    return null;
+  }
+
+  const isSettingsPage = pathname?.startsWith('/app/settings');
+  if (isSettingsPage) {
+    return children;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   // Event handlers
   const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessageInput(e.target.value);
@@ -292,16 +312,6 @@ export default function AppLayout({
       }
     }, 3000);
   };
-
-  // Now we can do conditional returns after all hooks
-  const isSettingsPage = pathname?.startsWith('/app/settings');
-  if (isSettingsPage) {
-    return children;
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   function handleChannelSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -367,14 +377,25 @@ export default function AppLayout({
           <div className="w-64 bg-gray-800 text-white flex flex-col">
             {/* Workspace Header */}
             <div className="p-4 border-b border-gray-700 flex items-center gap-3">
-              <Image 
-                src="https://cdn.prod.website-files.com/671d0f620752c1fed9d57d14/672d13130d0b313e9e1fa956_mega-creator%20(11)-p-500.png"
-                alt="ChatGenius Logo"
-                width={32}
-                height={32}
-                className="object-contain"
-              />
-              <h1 className="text-xl font-semibold">ChatGenius</h1>
+              <div 
+                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => {
+                  setSelectedChannel(null);
+                  setSelectedUser(null);
+                  setChatMode('channel');
+                  setIsThreadOpen(false);
+                  setSelectedMessage(null);
+                }}
+              >
+                <Image 
+                  src="https://cdn.prod.website-files.com/671d0f620752c1fed9d57d14/672d13130d0b313e9e1fa956_mega-creator%20(11)-p-500.png"
+                  alt="ChatGenius Logo"
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                />
+                <h1 className="text-xl font-semibold">ChatGenius</h1>
+              </div>
             </div>
 
             {/* Channels Section */}

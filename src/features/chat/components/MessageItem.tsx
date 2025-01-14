@@ -381,8 +381,8 @@ export function MessageItem({
 
           {/* Delete confirmation dialog */}
           {showDeleteConfirm && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+              <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full mx-4 relative z-[101]">
                 <h3 className="text-lg font-semibold mb-4">Delete Message</h3>
                 <p className="text-muted-foreground mb-6">Are you sure you want to delete this message? This action cannot be undone.</p>
                 <div className="flex justify-end gap-3">
