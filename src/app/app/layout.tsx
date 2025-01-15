@@ -346,6 +346,7 @@ export default function AppLayout({
           authorId: user._id,
           channelId: selectedChannel._id,
           isAvatarMessage: false,
+          attachmentId: attachmentId || undefined,
         });
       } else if (chatMode === 'direct' && selectedUser) {
         await sendDirectMessage({
@@ -353,6 +354,7 @@ export default function AppLayout({
           senderId: user._id,
           receiverId: selectedUser._id,
           isAvatarMessage: false,
+          attachmentId: attachmentId || undefined,
         });
       }
 
