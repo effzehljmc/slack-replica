@@ -69,4 +69,18 @@ export interface Thread {
   channelId: Id<"channels">;
   lastReplyTimestamp: number;
   replyCount: number;
+}
+
+export interface User {
+  _id: Id<"users">;
+  _creationTime: number;
+  name: string;
+  email: string;
+  status?: "online" | "offline" | "away";
+  lastSeenAt?: number;
+  autoAvatarEnabled?: boolean;
+  avatarStyle?: string;
+  avatarTraits?: string[];
+  voiceDescription?: string;
+  voiceId?: string;
 } 

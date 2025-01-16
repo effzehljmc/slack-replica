@@ -1,0 +1,1 @@
+const msgpack = require("msgpack-lite"); const fs = require("fs"); const data = {text:"Hello, this is a test", language:"en", voice_id:"en_male_2"}; fs.writeFileSync("test.msgpack", msgpack.encode(data));

@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 // List all users except the current user
@@ -72,5 +72,56 @@ export const updateVoiceDescription = mutation({
       voiceDescription
     });
     return voiceDescription;
+  },
+});
+
+export const updateVoiceModel = mutation({
+  args: {
+    userId: v.id('users'),
+    modelId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { userId, modelId } = args;
+
+    // Update the user's voice model ID
+    await ctx.db.patch(userId, {
+      voiceModelId: modelId,
+    });
+  },
+});
+
+export const getUser = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db.get(userId);
+  },
+});
+
+export const setCustomVoiceModel = mutation({
+  args: {
+    userId: v.id('users'),
+  },
+  handler: async (ctx, { userId }) => {
+    console.log('[Debug] Starting setCustomVoiceModel mutation', { userId });
+    
+    // Get current user data
+    const user = await ctx.db.get(userId);
+    console.log('[Debug] Current user data:', user);
+
+    // Update the user's voice model ID with Lukas's model
+    const modelId = '6a5f12ab1ebd4952afe776a80d4f3307';
+    console.log('[Debug] Applying voice model:', { modelId });
+    
+    try {
+      await ctx.db.patch(userId, {
+        voiceModelId: modelId,
+        voiceId: undefined // Clear voiceId when using a custom model
+      });
+      console.log('[Debug] Successfully updated user with voice model');
+      return { success: true };
+    } catch (error) {
+      console.error('[Debug] Failed to update user with voice model:', error);
+      throw error;
+    }
   },
 }); 

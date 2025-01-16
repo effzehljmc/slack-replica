@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MessageReactions } from "./MessageReactions";
 import { useState, useEffect, useRef } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -28,6 +28,7 @@ interface MessageItemProps {
       fileSize: number;
     };
     isAvatarMessage?: boolean;
+    ttsAudioId?: string;
   };
   isThreadReply?: boolean;
   onThreadClick?: (message: Message) => void;
@@ -46,23 +47,193 @@ export function MessageItem({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editedContent, setEditedContent] = useState(message.content);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const isInitializingRef = useRef(false);
-  
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const editChannelMessage = useMutation(api.messages.editMessage);
   const deleteChannelMessage = useMutation(api.messages.deleteMessage);
   const editDirectMessage = useMutation(api.direct_messages.editDirectMessage);
   const deleteDirectMessage = useMutation(api.direct_messages.deleteDirectMessage);
+  const synthesizeSpeech = useAction(api.audio.synthesizeSpeech);
 
   useEffect(() => {
     return () => {
-      // Cleanup: cancel any ongoing speech when component unmounts
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
+      // Cleanup: stop any playing audio when component unmounts
+      if (audioRef.current) {
+        audioRef.current.pause();
       }
     };
   }, []);
+
+  const handleBrowserTTS = () => {
+    if (!window.speechSynthesis) {
+      console.error('Speech synthesis not supported in this browser');
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(message.content);
+    
+    // Try to find an English voice
+    const voices = window.speechSynthesis.getVoices();
+    const englishVoice = voices.find(voice => 
+      voice.lang.startsWith('en-') && !voice.localService
+    ) || voices.find(voice => 
+      voice.lang.startsWith('en-')
+    ) || voices[0];
+
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+    }
+
+    window.speechSynthesis.cancel(); // Cancel any ongoing speech
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleVoiceToggle = async () => {
+    try {
+      // If already playing, stop the current audio
+      if (isPlaying && audioRef.current) {
+        console.log('[Debug - MessageItem] Stopping current playback');
+        audioRef.current.pause();
+        setIsPlaying(false);
+        return;
+      }
+
+      // Stop any other playing audio elements
+      document.querySelectorAll('audio').forEach(audio => audio.pause());
+
+      console.log('[Debug - MessageItem] Starting voice synthesis with:', {
+        messageId: message._id,
+        authorId: message.authorId,
+        isAvatarMessage: message.isAvatarMessage,
+        content: message.content.substring(0, 100) + '...',
+        currentUserId,
+        isPlaying,
+        hasExistingAudio: !!message.ttsAudioId,
+        author: message.author,
+        editedAt: message.editedAt
+      });
+
+      let storageId = message.ttsAudioId;
+
+      // Generate new audio if none exists, if message was edited, or if voice settings changed
+      if (!storageId || message.editedAt || message.isAvatarMessage) {
+        console.log('[Debug - MessageItem] Generating new audio because:', {
+          noExistingAudio: !storageId,
+          wasEdited: !!message.editedAt,
+          isAvatarMessage: message.isAvatarMessage
+        });
+
+        const result = await synthesizeSpeech({
+          text: message.content,
+          userId: message.authorId,
+          messageId: message._id,
+        });
+
+        console.log('[Debug - MessageItem] Synthesis result:', result);
+
+        if (!result?.success) {
+          const errorMessage = result?.error || 'Unknown error';
+          console.log('[Debug - MessageItem] Synthesis failed:', errorMessage);
+          
+          if (errorMessage.includes('credits depleted') || errorMessage.includes('API key invalid')) {
+            console.error('[Debug - MessageItem] Fish Audio service unavailable:', errorMessage);
+          }
+          
+          console.log('[Debug - MessageItem] Falling back to browser TTS');
+          handleBrowserTTS();
+          return;
+        }
+
+        storageId = result.storageId;
+        
+        // Wait a moment for the audio to be processed
+        console.log('[Debug - MessageItem] Waiting for audio processing...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        console.log('[Debug - MessageItem] Using existing audio:', storageId);
+      }
+
+      // Reset audio ref
+      if (audioRef.current) {
+        console.log('[Debug - MessageItem] Cleaning up previous audio instance');
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current.load();
+        audioRef.current = null;
+      }
+
+      console.log('[Debug - MessageItem] Fetching audio URL for storageId:', storageId);
+      const url = await fetch(`/api/storage/${storageId}`).then(res => res.url);
+      if (!url) {
+        console.error('[Debug - MessageItem] Failed to get audio URL');
+        throw new Error('Failed to get audio URL');
+      }
+      
+      console.log('[Debug - MessageItem] Creating new Audio instance with URL:', url);
+      const audio = new Audio();
+      audio.preload = 'auto'; // Ensure audio is fully loaded before playing
+      audioRef.current = audio;
+
+      // Set up event handlers before setting src
+      audio.onloadeddata = () => {
+        console.log('[Debug - MessageItem] Audio loaded:', {
+          duration: audio.duration,
+          readyState: audio.readyState,
+          paused: audio.paused,
+          error: audio.error
+        });
+      };
+      
+      audio.onended = () => {
+        console.log('[Debug - MessageItem] Audio playback ended');
+        setIsPlaying(false);
+        // Clean up audio instance after playback
+        if (audioRef.current) {
+          audioRef.current.src = '';
+          audioRef.current.load();
+          audioRef.current = null;
+        }
+      };
+
+      audio.onpause = () => {
+        console.log('[Debug - MessageItem] Audio playback paused');
+        setIsPlaying(false);
+      };
+
+      audio.onplay = () => {
+        console.log('[Debug - MessageItem] Audio playback started');
+        setIsPlaying(true);
+      };
+
+      audio.onerror = (e) => {
+        console.error('[Debug - MessageItem] Audio playback error:', e);
+        setIsPlaying(false);
+        handleBrowserTTS();
+      };
+
+      // Set source and start loading
+      audio.src = url;
+      audio.load();
+
+      console.log('[Debug - MessageItem] Starting audio playback');
+      // Wait for audio to be loaded before playing
+      if (audio.readyState < 3) { // HAVE_FUTURE_DATA instead of HAVE_CURRENT_DATA
+        console.log('[Debug - MessageItem] Waiting for audio to load...');
+        await new Promise((resolve, reject) => {
+          audio.oncanplaythrough = resolve; // Use oncanplaythrough instead of oncanplay
+          audio.onerror = reject;
+        });
+      }
+
+      await audio.play();
+    } catch (error) {
+      console.error('[Debug - MessageItem] Failed to play audio:', error instanceof Error ? error.message : error);
+      setIsPlaying(false);
+      console.log('[Debug - MessageItem] Falling back to browser TTS');
+      handleBrowserTTS();
+    }
+  };
 
   const handleThreadClick = () => {
     if (!isThreadReply && isChannelMessage(message) && onThreadClick) {
@@ -122,88 +293,6 @@ export function MessageItem({
     if (e.key === "Escape") {
       setIsEditing(false);
       setEditedContent(message.content);
-    }
-  };
-
-  const handleVoiceToggle = async () => {
-    if (!window.speechSynthesis) {
-      console.error('Speech synthesis not supported in this browser');
-      return;
-    }
-
-    // If currently speaking or initializing, stop
-    if (isSpeaking || isInitializingRef.current) {
-      isInitializingRef.current = false;
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
-
-    try {
-      isInitializingRef.current = true;
-
-      // Create new utterance for each speech request
-      const utterance = new SpeechSynthesisUtterance(message.content);
-      speechRef.current = utterance;
-
-      // Get available voices
-      let voices = window.speechSynthesis.getVoices();
-      if (voices.length === 0) {
-        // Wait for voices to load if they're not available yet
-        await new Promise<void>((resolve) => {
-          const handleVoicesChanged = () => {
-            voices = window.speechSynthesis.getVoices();
-            window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-            resolve();
-          };
-          window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-        });
-      }
-      
-      // Try to find an English voice
-      const englishVoice = voices.find(voice => 
-        voice.lang.startsWith('en-') && !voice.localService
-      ) || voices.find(voice => 
-        voice.lang.startsWith('en-')
-      ) || voices[0];
-
-      if (englishVoice) {
-        utterance.voice = englishVoice;
-      }
-
-      // Set speech properties
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-
-      // Handle speech end
-      utterance.onend = () => {
-        isInitializingRef.current = false;
-        setIsSpeaking(false);
-      };
-
-      // Handle speech error
-      utterance.onerror = (event) => {
-        if (event.error !== 'canceled') {
-          console.error('Speech synthesis error:', event.error);
-        }
-        isInitializingRef.current = false;
-        setIsSpeaking(false);
-      };
-
-      // Handle speech start
-      utterance.onstart = () => {
-        isInitializingRef.current = false;
-        setIsSpeaking(true);
-      };
-
-      // Start speaking
-      window.speechSynthesis.cancel(); // Cancel any ongoing speech
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      console.error('Failed to initialize speech:', error);
-      isInitializingRef.current = false;
-      setIsSpeaking(false);
     }
   };
 
@@ -290,19 +379,17 @@ export function MessageItem({
               </div>
             </div>
           ) : (
-            <>
-              <p className="whitespace-pre-wrap">{message.content}</p>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-900 dark:text-gray-100">{message.content}</p>
               {message.attachment && (
-                <div className="mt-2">
-                  <MessageAttachment 
-                    fileName={message.attachment.fileName}
-                    fileType={message.attachment.fileType}
-                    storageId={message.attachment.storageId}
-                    fileSize={message.attachment.fileSize}
-                  />
-                </div>
+                <MessageAttachment 
+                  fileName={message.attachment.fileName}
+                  fileType={message.attachment.fileType}
+                  storageId={message.attachment.storageId}
+                  fileSize={message.attachment.fileSize}
+                />
               )}
-            </>
+            </div>
           )}
         </div>
 
@@ -331,11 +418,11 @@ export function MessageItem({
               size="sm"
               className={cn(
                 "transition-opacity",
-                isSpeaking ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                isPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               )}
               onClick={handleVoiceToggle}
             >
-              {isSpeaking ? (
+              {isPlaying ? (
                 <VolumeX className="h-4 w-4" />
               ) : (
                 <Volume2 className="h-4 w-4" />

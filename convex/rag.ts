@@ -1,7 +1,7 @@
 import { mutation, internalAction, internalMutation, internalQuery, query, action, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 
 // Internal query to get message details
@@ -443,7 +443,6 @@ export const handleAvatarMention = internalAction({
 
       // For DMs, validate that the mentioned user is either the sender or receiver
       if (args.messageType === "direct_message") {
-        // Get the message to check participants
         const message = await ctx.runQuery(internal.rag.getMessage, {
           messageId: args.messageId,
           messageType: "direct_message"
@@ -453,7 +452,6 @@ export const handleAvatarMention = internalAction({
           return null;
         }
 
-        // Check if the mentioned user is either the sender or receiver of the DM
         const isParticipant = message.senderId === mentionedUser._id || message.receiverId === mentionedUser._id;
         
         if (!isParticipant) {
@@ -461,95 +459,27 @@ export const handleAvatarMention = internalAction({
         }
       }
 
-      // 3. Generate embedding for the query
-      const embedding = await ctx.runAction(internal.rag.generateEmbedding, {
-        text: query
+      // Generate the AI response
+      const response = await generateAIResponse(ctx, {
+        query,
+        mentionedUser,
+        messageId: args.messageId,
+        messageType: args.messageType,
+        channelId: args.channelId,
+        authorId: args.authorId,
+        shouldSpeak: args.shouldSpeak,
       });
 
-      // 4. Find relevant messages using vector search
-      const searchResults = await ctx.vectorSearch("embeddings", "by_embedding", {
-        vector: embedding,
-        limit: 5
-      });
-
-      // 5. Format messages for context
-      const relevantMessages = [];
-      for (const result of searchResults) {
-        const doc = await ctx.runQuery(internal.rag.getEmbeddingById, { id: result._id });
-        if (!doc) continue;
-
-        let messageContent = null;
-        let author = null;
-        let timestamp = null;
-
-        if (doc.messageId) {
-          const message = await ctx.runQuery(internal.rag.getMessage, {
-            messageId: doc.messageId,
-            messageType: "message"
-          }) as Doc<"messages"> | null;
-          
-          if (message) {
-            const user = await ctx.runQuery(internal.rag.getUserById, { id: message.authorId });
-            messageContent = message.content;
-            author = user?.name ?? "Unknown";
-            timestamp = message.createdAt ?? Date.now();
-          }
-        } else if (doc.directMessageId) {
-          const message = await ctx.runQuery(internal.rag.getMessage, {
-            messageId: doc.directMessageId,
-            messageType: "direct_message"
-          }) as Doc<"direct_messages"> | null;
-          
-          if (message) {
-            const user = await ctx.runQuery(internal.rag.getUserById, { id: message.senderId });
-            messageContent = message.content;
-            author = user?.name ?? "Unknown";
-            timestamp = message.createdAt;
-          }
-        }
-
-        if (messageContent && author && timestamp) {
-          relevantMessages.push({
-            content: messageContent,
-            author,
-            timestamp,
-            score: result._score
-          });
-        }
+      if (!response) {
+        return null;
       }
 
-      // 6. Generate the response using our prompt construction
-      const prompt = await ctx.runAction(internal.rag.constructPrompt, {
-        query,
-        userId: mentionedUser._id,
-        relevantMessages,
-        personality: {
-          style: mentionedUser.avatarStyle ?? "You are friendly, direct, and like to use emojis",
-          traits: mentionedUser.avatarTraits ?? ["helpful", "concise", "positive"]
-        },
-        shouldSpeak: args.shouldSpeak
-      });
-
-      // 7. Call OpenAI for completion
-      const response = await ctx.runAction(internal.rag.generateResponse, {
-        prompt,
-        userId: mentionedUser._id
-      });
-
-      // 8. Post the response as a new message
-      if (args.messageType === "message") {
-        await ctx.runMutation(internal.rag.sendAvatarMessage, {
-          content: response,
-          authorId: mentionedUser._id,
-          channelId: args.channelId!,
-          replyToId: args.messageId as Id<"messages">
-        });
-      } else {
-        await ctx.runMutation(internal.rag.sendAvatarDirectMessage, {
-          content: response,
-          senderId: mentionedUser._id,
-          receiverId: args.authorId,
-          replyToId: args.messageId as Id<"direct_messages">
+      // Generate TTS if enabled
+      if (args.shouldSpeak) {
+        await ctx.runAction(api.audio.synthesizeSpeech, {
+          text: response.content,
+          userId: mentionedUser._id,
+          messageId: response.messageId,
         });
       }
 
@@ -559,6 +489,115 @@ export const handleAvatarMention = internalAction({
     }
   }
 });
+
+// Helper function to generate AI response
+async function generateAIResponse(
+  ctx: ActionCtx,
+  args: {
+    query: string;
+    mentionedUser: Doc<"users">;
+    messageId: Id<"messages"> | Id<"direct_messages">;
+    messageType: "message" | "direct_message";
+    channelId?: Id<"channels">;
+    authorId: Id<"users">;
+    shouldSpeak?: boolean;
+  }
+) {
+  // 1. Generate embedding for the query
+  const embedding = await ctx.runAction(internal.rag.generateEmbedding, {
+    text: args.query
+  });
+
+  // 2. Find relevant messages using vector search
+  const searchResults = await ctx.vectorSearch("embeddings", "by_embedding", {
+    vector: embedding,
+    limit: 5
+  });
+
+  // 3. Format messages for context
+  const relevantMessages = [];
+  for (const result of searchResults) {
+    const doc = await ctx.runQuery(internal.rag.getEmbeddingById, { id: result._id });
+    if (!doc) continue;
+
+    let messageContent = null;
+    let author = null;
+    let timestamp = null;
+
+    if (doc.messageId) {
+      const message = await ctx.runQuery(internal.rag.getMessage, {
+        messageId: doc.messageId,
+        messageType: "message"
+      }) as Doc<"messages"> | null;
+      
+      if (message) {
+        const user = await ctx.runQuery(internal.rag.getUserById, { id: message.authorId });
+        messageContent = message.content;
+        author = user?.name ?? "Unknown";
+        timestamp = message.createdAt ?? Date.now();
+      }
+    } else if (doc.directMessageId) {
+      const message = await ctx.runQuery(internal.rag.getMessage, {
+        messageId: doc.directMessageId,
+        messageType: "direct_message"
+      }) as Doc<"direct_messages"> | null;
+      
+      if (message) {
+        const user = await ctx.runQuery(internal.rag.getUserById, { id: message.senderId });
+        messageContent = message.content;
+        author = user?.name ?? "Unknown";
+        timestamp = message.createdAt;
+      }
+    }
+
+    if (messageContent && author && timestamp) {
+      relevantMessages.push({
+        content: messageContent,
+        author,
+        timestamp,
+        score: result._score
+      });
+    }
+  }
+
+  // 4. Generate the response using our prompt construction
+  const prompt = await ctx.runAction(internal.rag.constructPrompt, {
+    query: args.query,
+    userId: args.mentionedUser._id,
+    relevantMessages,
+    personality: {
+      style: args.mentionedUser.avatarStyle ?? "You are friendly, direct, and like to use emojis",
+      traits: args.mentionedUser.avatarTraits ?? ["helpful", "concise", "positive"]
+    },
+    shouldSpeak: args.shouldSpeak
+  });
+
+  // 5. Call OpenAI for completion
+  const response = await ctx.runAction(internal.rag.generateResponse, {
+    prompt,
+    userId: args.mentionedUser._id
+  });
+
+  // 6. Post the response as a new message
+  let messageId: Id<"messages"> | Id<"direct_messages">;
+  if (args.messageType === "message") {
+    messageId = await ctx.runMutation(internal.rag.sendAvatarMessage, {
+      content: response,
+      authorId: args.mentionedUser._id,
+      channelId: args.channelId!,
+      replyToId: args.messageId as Id<"messages">
+    });
+  } else {
+    messageId = await ctx.runMutation(internal.rag.sendAvatarDirectMessage, {
+      content: response,
+      senderId: args.mentionedUser._id,
+      receiverId: args.authorId,
+      replyToId: args.messageId as Id<"direct_messages">
+    });
+  }
+
+  return { content: response, messageId };
+}
 
 // Helper query to get user by name
 export const getUserByName = internalQuery({
@@ -655,21 +694,25 @@ Please respond in a way that matches your personality and style.${args.shouldSpe
 export const enableAutoAvatar = mutation({
   args: {
     userId: v.id("users"),
+    enabled: v.boolean(),
     style: v.optional(v.string()),
     traits: v.optional(v.array(v.string())),
-    enabled: v.optional(v.boolean()),
+    voiceId: v.optional(v.string()),
+    voiceDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const defaultStyle = "You are friendly, direct, and like to use emojis";
-    const defaultTraits = ["helpful", "concise", "positive"];
-
+    // Check if voiceId is a custom model ID (32 characters)
+    const isCustomModel = args.voiceId?.length === 32;
+    
     await ctx.db.patch(args.userId, {
-      autoAvatarEnabled: args.enabled ?? true,
-      avatarStyle: args.style ?? defaultStyle,
-      avatarTraits: args.traits ?? defaultTraits,
+      autoAvatarEnabled: args.enabled,
+      avatarStyle: args.style,
+      avatarTraits: args.traits,
+      // If it's a custom model, store in voiceModelId and clear voiceId
+      voiceModelId: isCustomModel ? args.voiceId : undefined,
+      voiceId: isCustomModel ? undefined : args.voiceId,
+      voiceDescription: args.voiceDescription,
     });
-
-    return { success: true };
   },
 });
 

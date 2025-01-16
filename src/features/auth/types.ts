@@ -10,6 +10,8 @@ export interface User {
   avatarStyle?: string;
   avatarTraits?: string[];
   voiceDescription?: string;
+  voiceId?: string;
+  voiceModelId?: string;
 }
 
 export interface AuthState {

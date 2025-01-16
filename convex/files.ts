@@ -85,4 +85,11 @@ export const getAttachment = query({
     }
     return attachment;
   },
+});
+
+export const getStorageUrl = query({
+  args: { storageId: v.string() },
+  handler: async (ctx, { storageId }) => {
+    return await ctx.storage.getUrl(storageId);
+  },
 }); 

@@ -16,6 +16,9 @@ export default defineSchema({
     attachmentId: v.optional(v.id("attachments")),
     isAvatarMessage: v.optional(v.boolean()),
     replyToId: v.optional(v.id("messages")),
+    ttsAudioId: v.optional(v.string()),
+    documentReferences: v.optional(v.array(v.string())),
+    isUsingRAG: v.optional(v.boolean()),
   })
     .index("by_thread", ["threadId"])
     .index("by_channel", ["channelId"])
@@ -61,6 +64,8 @@ export default defineSchema({
     avatarStyle: v.optional(v.string()),
     avatarTraits: v.optional(v.array(v.string())),
     voiceDescription: v.optional(v.string()),
+    voiceId: v.optional(v.string()),
+    voiceModelId: v.optional(v.string()),
   })
     .index("by_email", ["email"]),
 
@@ -75,6 +80,9 @@ export default defineSchema({
     isAvatarMessage: v.optional(v.boolean()),
     replyToId: v.optional(v.id("direct_messages")),
     isAvatarMentioned: v.optional(v.boolean()),
+    ttsAudioId: v.optional(v.string()),
+    documentReferences: v.optional(v.array(v.string())),
+    isUsingRAG: v.optional(v.boolean()),
   })
     .index("by_sender", ["senderId"])
     .index("by_receiver", ["receiverId"])

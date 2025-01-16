@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
@@ -339,5 +339,17 @@ export const get = query({
   args: { id: v.id("messages") },
   handler: async (ctx, { id }) => {
     return await ctx.db.get(id);
+  },
+});
+
+export const updateMessageAudio = internalMutation({
+  args: { 
+    messageId: v.union(v.id("messages"), v.id("direct_messages")),
+    storageId: v.string()
+  },
+  handler: async (ctx, args: { messageId: Id<"messages"> | Id<"direct_messages">; storageId: string }) => {
+    await ctx.db.patch(args.messageId, {
+      ttsAudioId: args.storageId
+    });
   },
 }); 

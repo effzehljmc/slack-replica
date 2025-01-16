@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as audio from "../audio.js";
 import type * as auth from "../auth.js";
 import type * as channels from "../channels.js";
 import type * as directMessages from "../directMessages.js";
@@ -36,6 +37,7 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  audio: typeof audio;
   auth: typeof auth;
   channels: typeof channels;
   directMessages: typeof directMessages;
