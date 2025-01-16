@@ -23,7 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useCurrentUser } from "@/features/auth/hooks/use-current-user"
 import { useRouter } from 'next/navigation'
@@ -48,14 +48,6 @@ const traits = [
   { id: 'proactive', label: 'Proactive' }
 ]
 
-const voiceOptions = [
-  { value: 'default', label: 'Default Voice' },
-  { value: 'en_female_1', label: 'English Female 1' },
-  { value: 'en_female_2', label: 'English Female 2' },
-  { value: 'en_male_1', label: 'English Male 1' },
-  { value: 'en_male_2', label: 'English Male 2' },
-];
-
 // Helper to parse the style string and determine if it's a predefined style or custom
 function parseStyleString(style?: string): { type: string; custom?: string } {
   if (!style) return { type: 'professional' };
@@ -74,7 +66,6 @@ export default function AIAvatarSettings() {
   const { data: user } = useCurrentUser();
   const router = useRouter();
   const enableAutoAvatar = useMutation(api.rag.enableAutoAvatar);
-  const updateVoiceDescription = useMutation(api.users.updateVoiceDescription);
   const setCustomVoiceModel = useMutation(api.users.setCustomVoiceModel);
 
   const [isEnabled, setIsEnabled] = useState(user?.autoAvatarEnabled ?? false);
