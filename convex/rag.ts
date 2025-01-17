@@ -698,19 +698,16 @@ export const enableAutoAvatar = mutation({
     style: v.optional(v.string()),
     traits: v.optional(v.array(v.string())),
     voiceId: v.optional(v.string()),
+    voiceModelId: v.optional(v.string()),
     voiceDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Check if voiceId is a custom model ID (32 characters)
-    const isCustomModel = args.voiceId?.length === 32;
-    
     await ctx.db.patch(args.userId, {
       autoAvatarEnabled: args.enabled,
       avatarStyle: args.style,
       avatarTraits: args.traits,
-      // If it's a custom model, store in voiceModelId and clear voiceId
-      voiceModelId: isCustomModel ? args.voiceId : undefined,
-      voiceId: isCustomModel ? undefined : args.voiceId,
+      voiceModelId: args.voiceModelId,
+      voiceId: args.voiceId,
       voiceDescription: args.voiceDescription,
     });
   },

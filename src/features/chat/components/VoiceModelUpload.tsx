@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2, Upload } from "lucide-react";
-import { createVoiceModel, getModelStatus } from '@/lib/fishAudioModelService';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
@@ -20,7 +19,6 @@ import {
 import { Id } from "@/convex/_generated/dataModel";
 
 interface VoiceModelUploadProps {
-  apiKey: string;
   userId: Id<"users">;
   onModelCreated: (modelId: string) => void;
 }
@@ -46,7 +44,7 @@ const SUPPORTED_LANGUAGES = [
 
 type LanguageCode = typeof SUPPORTED_LANGUAGES[number]['code'];
 
-export function VoiceModelUpload({ apiKey, userId, onModelCreated }: VoiceModelUploadProps) {
+export function VoiceModelUpload({ userId, onModelCreated }: VoiceModelUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [transcription, setTranscription] = useState('');
@@ -159,66 +157,65 @@ export function VoiceModelUpload({ apiKey, userId, onModelCreated }: VoiceModelU
         throw new Error('Audio file validation failed');
       }
 
-      // Read the audio file as ArrayBuffer
-      let audioData: ArrayBuffer;
-      try {
-        audioData = await audioFile.arrayBuffer();
-        if (!audioData || audioData.byteLength === 0) {
-          throw new Error('Failed to read audio file data');
-        }
-      } catch (error) {
-        console.error('Error reading audio file:', error);
-        throw new Error('Failed to read audio file data');
+      // Create FormData for the request
+      const formData = new FormData();
+      formData.append('voices', audioFile);
+      formData.append('title', modelTitle);
+      formData.append('texts', transcription.trim());
+      formData.append('language', selectedLanguage);
+
+      console.log('[Debug - VoiceModelUpload] Sending request with:', {
+        title: modelTitle,
+        language: selectedLanguage,
+        audioFileName: audioFile.name,
+        audioFileType: audioFile.type,
+        audioFileSize: audioFile.size,
+        transcriptionLength: transcription.trim().length
+      });
+
+      // Send request to our API endpoint
+      const response = await fetch('/api/voice-model', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('[Debug - VoiceModelUpload] API error response:', error);
+        throw new Error(error.error || 'Failed to create voice model');
       }
 
-      console.log('Audio data loaded:', {
-        size: audioData.byteLength,
-        type: audioFile.type,
-        duration: audioDuration
-      });
+      const model = await response.json();
+      console.log('[Debug - VoiceModelUpload] API response:', model);
 
-      // Create the voice model with language
-      const model = await createVoiceModel(apiKey, {
-        title: modelTitle,
-        description: `AI Avatar voice model for user ${userId} (${selectedLanguage})`,
-        audioData,
-        transcription: transcription.trim(),
-        language: selectedLanguage
-      });
-
-      if (!model || !model.id) {
+      if (!model || typeof model !== 'object') {
+        console.error('[Debug - VoiceModelUpload] Invalid response data:', model);
         throw new Error('Invalid response from voice model creation');
       }
 
-      // Poll for model status
-      let finalModel = model;
-      while (finalModel.status === 'pending') {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        finalModel = await getModelStatus(apiKey, model.id);
+      if (!model.id || typeof model.id !== 'string') {
+        console.error('[Debug - VoiceModelUpload] Missing model ID in response:', model);
+        throw new Error('Missing model ID in response');
       }
 
-      if (finalModel.status === 'ready') {
-        // Update user's voice model ID
-        await updateUserVoiceModel({
-          userId,
-          modelId: finalModel.id
-        });
+      // Update user's voice model ID
+      await updateUserVoiceModel({
+        userId,
+        modelId: model.id
+      });
 
-        onModelCreated(finalModel.id);
-        toast.success('Voice model created successfully');
+      onModelCreated(model.id);
+      toast.success('Voice model created successfully');
 
-        // Clear form
-        setAudioFile(null);
-        setTranscription('');
-        setModelTitle('');
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      } else {
-        throw new Error(`Model creation failed with status: ${finalModel.status}`);
+      // Clear form
+      setAudioFile(null);
+      setTranscription('');
+      setModelTitle('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     } catch (error) {
-      console.error('Failed to create voice model:', error);
+      console.error('[Debug - VoiceModelUpload] Error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create voice model');
     } finally {
       setIsUploading(false);

@@ -88,7 +88,8 @@ export default function AIAvatarSettings() {
     setCustomStyle(parsed.custom ?? '');
     setSelectedTraits(user?.avatarTraits ?? []);
     setVoiceDescription(user?.voiceDescription ?? '');
-    setVoiceId(user?.voiceId ?? 'default');
+    // If there's a custom voice model, use that, otherwise use the default voice ID
+    setVoiceId(user?.voiceModelId ?? user?.voiceId ?? 'default');
   }, [user]);
 
   const handleSave = async () => {
@@ -106,6 +107,7 @@ export default function AIAvatarSettings() {
           : `You are ${personality} and like to keep responses concise`,
         traits: isEnabled ? selectedTraits : [],
         voiceId: isEnabled ? (isCustomModel ? undefined : voiceId) : undefined,
+        voiceModelId: isEnabled ? (isCustomModel ? voiceId : undefined) : undefined,
         voiceDescription: isEnabled ? voiceDescription.trim() : undefined,
       });
       
@@ -300,7 +302,6 @@ export default function AIAvatarSettings() {
 
             {showVoiceModelUpload && user?._id && (
               <VoiceModelUpload
-                apiKey={process.env.NEXT_PUBLIC_FISH_AUDIO_API_KEY || ''}
                 userId={user._id}
                 onModelCreated={(modelId) => {
                   setVoiceId(modelId);

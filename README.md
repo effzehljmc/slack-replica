@@ -116,9 +116,11 @@ bun install
      ```bash
      cp .env.example .env.local
      ```
-   - Edit `.env.local` and add your Convex URL:
+   - Edit `.env.local` and add your API keys:
      ```env
      NEXT_PUBLIC_CONVEX_URL=your_convex_deployment_url
+     OPENAI_API_KEY=your_openai_api_key
+     FISH_AUDIO_API_KEY=your_fish_audio_api_key  # Required for voice features
      ```
 
 ### Running the App
@@ -248,9 +250,11 @@ slack-replica/
 ### Voice Features
 - **Text-to-Speech**: AI messages can be played back using text-to-speech
 - **Voice Customization**: Users can set custom voice instructions for their AI avatar
-- **Toggle Controls**: Easy-to-use voice toggle button for each AI message
-- **Voice Settings**: Configurable voice preferences in AI Avatar settings
-- **Smart Voice Handling**: Efficient voice synthesis with proper cleanup and error handling
+- **Custom Voice Models**: Support for Fish Audio custom voice models
+  - Upload your own voice samples to create a personalized AI voice
+  - Multiple language support for voice models
+  - Consistent voice playback using your custom voice
+  - Easy integration with AI avatar settings
 
 ### AI Avatars
 - **Personal AI Representation**: Each user can enable their own AI avatar
